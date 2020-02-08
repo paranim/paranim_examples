@@ -10,7 +10,7 @@ type
   Game* = object of RootGame
     deltaTime*: float
     totalTime*: float
-    imageEntity: ImageEntity
+    imageEntities: array[5, ImageEntity]
 
 const
   rawImage = staticRead("assets/koalio.png")
@@ -127,7 +127,23 @@ let rules =
         session.insert(Player, YChange, yChange)
         session.insert(Player, X, x + xChange)
         session.insert(Player, Y, y + yChange)
-    rule animatePlayer(Fact):
+    rule animateStanding(Fact):
+      what:
+        (Player, XVelocity, xv)
+        (Player, YVelocity, yv)
+      cond:
+        xv == 0
+        yv == 0
+      then:
+        session.insert(Player, ImageIndex, 0)
+    rule animateJumping(Fact):
+      what:
+        (Player, YVelocity, yv)
+      cond:
+        yv != 0
+      then:
+        session.insert(Player, ImageIndex, 1)
+    rule animateWalking(Fact):
       what:
         (Global, TotalTime, tt)
         (Player, XVelocity, xv)
@@ -136,9 +152,16 @@ let rules =
         xv != 0
         yv == 0
       then:
-        #let cycleTime = tt mod (animationSecs * images.len)
-        #let index = int(cycleTime / animationSecs)
-        #session.insert(Player, ImageIndex, index)
+        let
+          cycleTime = tt mod (animationSecs * 3)
+          index = int(cycleTime / animationSecs)
+        session.insert(Player, ImageIndex, index + 2)
+    rule updateDirection(Fact):
+      what:
+        (Player, XVelocity, xv)
+      cond:
+        xv != 0
+      then:
         session.insert(Player, Direction, if xv > 0: Right else: Left)
     # prevent going through walls
     rule preventMoveLeft(Fact):
@@ -211,14 +234,17 @@ proc init*(game: var Game) =
   glEnable(GL_BLEND)
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-  # load images
+  # load image
   var
     width, height, channels: int
     data: seq[uint8]
   data = stbi.loadFromMemory(cast[seq[uint8]](rawImage), width, height, channels, stbi.RGBA)
-  var uncompiledImage = initImageEntity(data, width, height)
-  uncompiledImage.crop(0f, 0f, koalaWidth, koalaHeight)
-  game.imageEntity = compile(game, uncompiledImage)
+  let
+    uncompiledImage = initImageEntity(data, width, height)
+    image = compile(game, uncompiledImage)
+  for i in 0 ..< game.imageEntities.len:
+    game.imageEntities[i] = image
+    game.imageEntities[i].crop(float(i) * koalaWidth, 0f, koalaWidth, koalaHeight)
 
   # set initial values
   session.insert(Global, PressedKeys, initHashSet[int]())
@@ -254,7 +280,7 @@ proc tick*(game: Game) =
     else:
       player.width * -1
 
-  var image = game.imageEntity
+  var image = game.imageEntities[player.imageIndex]
   image.project(float(windowWidth), float(windowHeight))
   image.translate(x, player.y)
   image.scale(width, player.height)
