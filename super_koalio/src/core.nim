@@ -10,19 +10,18 @@ type
   Game* = object of RootGame
     deltaTime*: float
     totalTime*: float
-    imageEntities: array[3, ImageEntity]
+    imageEntity: ImageEntity
 
-const images = [
-  staticRead("assets/player_walk1.png"),
-  staticRead("assets/player_walk2.png"),
-  staticRead("assets/player_walk3.png")
-]
-const gravity = 500
-const deceleration = 0.7
-const damping = 0.1
-const maxVelocity = 1000f
-const maxJumpVelocity = float(maxVelocity * 8)
-const animationSecs = 0.2
+const
+  rawImage = staticRead("assets/koalio.png")
+  gravity = 500
+  deceleration = 0.7
+  damping = 0.1
+  maxVelocity = 1000f
+  maxJumpVelocity = float(maxVelocity * 8)
+  animationSecs = 0.2
+  koalaWidth = 18f
+  koalaHeight = 26f
 
 type
   Id = enum
@@ -137,9 +136,9 @@ let rules =
         xv != 0
         yv == 0
       then:
-        let cycleTime = tt mod (animationSecs * images.len)
-        let index = int(cycleTime / animationSecs)
-        session.insert(Player, ImageIndex, index)
+        #let cycleTime = tt mod (animationSecs * images.len)
+        #let index = int(cycleTime / animationSecs)
+        #session.insert(Player, ImageIndex, index)
         session.insert(Player, Direction, if xv > 0: Right else: Left)
     # prevent going through walls
     rule preventMoveLeft(Fact):
@@ -216,17 +215,17 @@ proc init*(game: var Game) =
   var
     width, height, channels: int
     data: seq[uint8]
-  for i in 0 ..< images.len:
-    data = stbi.loadFromMemory(cast[seq[uint8]](images[i]), width, height, channels, stbi.RGBA)
-    let uncompiledImage = initImageEntity(data, width, height)
-    game.imageEntities[i] = compile(game, uncompiledImage)
+  data = stbi.loadFromMemory(cast[seq[uint8]](rawImage), width, height, channels, stbi.RGBA)
+  var uncompiledImage = initImageEntity(data, width, height)
+  uncompiledImage.crop(0f, 0f, koalaWidth, koalaHeight)
+  game.imageEntity = compile(game, uncompiledImage)
 
   # set initial values
   session.insert(Global, PressedKeys, initHashSet[int]())
   session.insert(Player, X, 0f)
   session.insert(Player, Y, 0f)
-  session.insert(Player, Width, float(width))
-  session.insert(Player, Height, float(height))
+  session.insert(Player, Width, koalaWidth)
+  session.insert(Player, Height, koalaHeight)
   session.insert(Player, XVelocity, 0f)
   session.insert(Player, YVelocity, 0f)
   session.insert(Player, CanJump, false)
@@ -252,7 +251,7 @@ proc tick*(game: Game) =
     else:
       player.width * -1
 
-  var image = game.imageEntities[player.imageIndex]
+  var image = game.imageEntity
   image.project(float(windowWidth), float(windowHeight))
   image.translate(x, player.y)
   image.scale(width, player.height)
