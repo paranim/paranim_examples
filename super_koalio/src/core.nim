@@ -4,7 +4,7 @@ import stb_image/read as stbi
 import paranim/gl, paranim/gl/entities
 import pararules
 from tiles import nil
-import sets
+import sets, tables
 from math import `mod`
 
 type
@@ -12,6 +12,7 @@ type
     deltaTime*: float
     totalTime*: float
     imageEntities: array[5, ImageEntity]
+    tiledMapEntity: InstancedImageEntity
 
 const
   rawImage = staticRead("assets/koalio.png")
@@ -251,20 +252,34 @@ proc init*(game: var Game) =
 
   # load tiled map
   block:
+    # load tileset image
     var
       width, height, channels: int
       data: seq[uint8]
     data = stbi.loadFromMemory(cast[seq[uint8]](tiledMap.tileset.data), width, height, channels, stbi.RGBA)
+    # create an entity for each tile
     let
       uncompiledImage = initImageEntity(data, width, height)
       tileWidth = tiledMap.tileset.tileWidth
       tileHeight = tiledMap.tileset.tileHeight
-    var imageEntities = newSeq[UncompiledImageEntity]()
-    for y in 0 ..< int(width / tileWidth):
-      for x in 0 ..< int(height / tileHeight):
+    var images = newSeq[UncompiledImageEntity]()
+    for y in 0 ..< int(height / tileHeight):
+      for x in 0 ..< int(width / tileWidth):
         var imageEntity = uncompiledImage
         imageEntity.crop(float(x * tileWidth), float(y * tileHeight), float(tileWidth), float(tileHeight))
-        imageEntities.add(imageEntity)
+        images.add(imageEntity)
+    # create an instanced entity containing all the tiles
+    var uncompiledTiledMap = initInstancedEntity(uncompiledImage)
+    for layerName in ["background", "walls"]:
+      let layerData = tiledMap.layers[layerName]
+      for x in 0 ..< layerData.len:
+        for y in 0 ..< layerData[x].len:
+          let imageId = layerData[x][y]
+          if imageId >= 0:
+            var image = images[imageId]
+            image.translate(float(x), float(y))
+            uncompiledTiledMap.add(image)
+    game.tiledMapEntity = compile(game, uncompiledTiledMap)
 
   # set initial values
   session.insert(Global, PressedKeys, initHashSet[int]())
@@ -288,6 +303,13 @@ proc tick*(game: Game) =
   glClearColor(173/255, 216/255, 230/255, 1f)
   glClear(GL_COLOR_BUFFER_BIT)
   glViewport(0, 0, int32(windowWidth), int32(windowHeight))
+
+  let scaledTileSize = windowHeight / tiledMap.height
+
+  var tiledMapEntity = game.tiledMapEntity
+  tiledMapEntity.project(float(windowWidth), float(windowHeight))
+  tiledMapEntity.scale(scaledTileSize, scaledTileSize)
+  render(game, tiledMapEntity)
 
   let x =
     if player.direction == Right:

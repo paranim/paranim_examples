@@ -8,7 +8,7 @@ type
     width*: int
     height*: int
     tileset*: tuple[tileWidth: int, tileHeight: int, data: string]
-    layers*: Table[string, seq[seq[uint32]]]
+    layers*: Table[string, seq[seq[int]]]
 
 proc attrInt(node: XmlNode, name: string): int =
   strutils.parseInt(node.attr(name))
@@ -37,23 +37,27 @@ proc loadTiledMap*(path: string): TiledMap =
       dataNode = layer.findAll("data")[0]
       encoding = dataNode.attr("encoding")
       compression = dataNode.attr("compression")
-    var data = newSeq[seq[uint32]]()
+    var data = newSeq[seq[int]](width)
     if compression != "":
       raise newException(Exception, "Compression not supported")
     if encoding == "base64":
-      let binary = base64.decode(dataNode.innerText)
-      for i in 0 ..< int(binary.len / sizeof(uint32)):
+      let
+        binary = base64.decode(dataNode.innerText)
+        size = sizeof(uint32)
+      for i in 0 ..< int(binary.len / size):
         let
           x = i mod width
           y = int(i / width)
           imageId =
-            (uint8(binary[i]) shl 24) or
-            (uint8(binary[i+1]) shl 16) or
-            (uint8(binary[i+2]) shl 8) or
-            uint8(binary[i+3])
-        if data.len == x:
-          data.add(newSeq[uint32]())
-        data[x].add(imageId)
+            int(
+              (uint8(binary[i*size+3]) shl 24) or
+              (uint8(binary[i*size+2]) shl 16) or
+              (uint8(binary[i*size+1]) shl 8) or
+              uint8(binary[i*size])
+            ) - 1 # tile ids are 1-based, so we need to decrement
+        if data[x].len == 0:
+          data[x] = newSeq[int](height)
+        data[x][y] = imageId
     else:
       raise newException(Exception, "Encoding not supported")
     result.layers[name] = data
