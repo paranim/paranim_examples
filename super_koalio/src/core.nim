@@ -3,6 +3,7 @@ from nimgl/glfw import GLFWKey
 import stb_image/read as stbi
 import paranim/gl, paranim/gl/entities
 import pararules
+from tiles import nil
 import sets
 from math import `mod`
 
@@ -14,6 +15,7 @@ type
 
 const
   rawImage = staticRead("assets/koalio.png")
+  tiledMap = tiles.loadTiledMap("assets/level1.tmx")
   gravity = 500
   deceleration = 0.7
   damping = 0.1
