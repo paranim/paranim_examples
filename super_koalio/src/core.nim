@@ -237,16 +237,34 @@ proc init*(game: var Game) =
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
   # load image
-  var
-    width, height, channels: int
-    data: seq[uint8]
-  data = stbi.loadFromMemory(cast[seq[uint8]](rawImage), width, height, channels, stbi.RGBA)
-  let
-    uncompiledImage = initImageEntity(data, width, height)
-    image = compile(game, uncompiledImage)
-  for i in 0 ..< game.imageEntities.len:
-    game.imageEntities[i] = image
-    game.imageEntities[i].crop(float(i) * koalaWidth, 0f, koalaWidth, koalaHeight)
+  block:
+    var
+      width, height, channels: int
+      data: seq[uint8]
+    data = stbi.loadFromMemory(cast[seq[uint8]](rawImage), width, height, channels, stbi.RGBA)
+    let
+      uncompiledImage = initImageEntity(data, width, height)
+      image = compile(game, uncompiledImage)
+    for i in 0 ..< game.imageEntities.len:
+      game.imageEntities[i] = image
+      game.imageEntities[i].crop(float(i) * koalaWidth, 0f, koalaWidth, koalaHeight)
+
+  # load tiled map
+  block:
+    var
+      width, height, channels: int
+      data: seq[uint8]
+    data = stbi.loadFromMemory(cast[seq[uint8]](tiledMap.tileset.data), width, height, channels, stbi.RGBA)
+    let
+      uncompiledImage = initImageEntity(data, width, height)
+      tileWidth = tiledMap.tileset.tileWidth
+      tileHeight = tiledMap.tileset.tileHeight
+    var imageEntities = newSeq[UncompiledImageEntity]()
+    for y in 0 ..< int(width / tileWidth):
+      for x in 0 ..< int(height / tileHeight):
+        var imageEntity = uncompiledImage
+        imageEntity.crop(float(x * tileWidth), float(y * tileHeight), float(tileWidth), float(tileHeight))
+        imageEntities.add(imageEntity)
 
   # set initial values
   session.insert(Global, PressedKeys, initHashSet[int]())
