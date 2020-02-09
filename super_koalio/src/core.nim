@@ -17,10 +17,10 @@ type
 const
   rawImage = staticRead("assets/koalio.png")
   tiledMap = tiles.loadTiledMap("assets/level1.tmx")
-  gravity = 500
-  deceleration = 0.7
+  gravity = 3
+  deceleration = 0.8
   damping = 0.1
-  maxVelocity = 1000f
+  maxVelocity = 16f
   maxJumpVelocity = float(maxVelocity * 8)
   animationSecs = 0.2
   koalaWidth = 18f
@@ -31,6 +31,7 @@ type
     Global, Player
   Attr = enum
     DeltaTime, TotalTime, WindowWidth, WindowHeight,
+    WorldWidth, WorldHeight,
     PressedKeys, MouseClick, MousePosition,
     X, Y, Width, Height,
     XVelocity, YVelocity, XChange, YChange,
@@ -45,6 +46,8 @@ schema Fact(Id, Attr):
   TotalTime: float
   WindowWidth: int
   WindowHeight: int
+  WorldWidth: float
+  WorldHeight: float
   PressedKeys: IntSet
   MouseClick: int
   MousePosition: XYTuple
@@ -71,6 +74,14 @@ let rules =
       what:
         (Global, WindowWidth, windowWidth)
         (Global, WindowHeight, windowHeight)
+      then:
+        let tileSize = windowHeight / tiledMap.height
+        session.insert(Global, WorldWidth, float(windowWidth) / tileSize)
+        session.insert(Global, WorldHeight, float(windowHeight) / tileSize)
+    rule getWorld(Fact):
+      what:
+        (Global, WorldWidth, worldWidth)
+        (Global, WorldHeight, worldHeight)
     rule getKeys(Fact):
       what:
         (Global, PressedKeys, keys)
@@ -85,12 +96,12 @@ let rules =
     # enable and perform jumping
     rule allowJump(Fact):
       what:
-        (Global, WindowHeight, windowHeight)
+        (Global, WorldHeight, worldHeight)
         (Player, Height, height)
         (Player, Y, y)
         (Player, CanJump, canJump, then = false)
       cond:
-        y > float(windowHeight) - height
+        y > worldHeight - height
         not canJump
       then:
         session.insert(Player, CanJump, true)
@@ -169,7 +180,6 @@ let rules =
     # prevent going through walls
     rule preventMoveLeft(Fact):
       what:
-        (Global, WindowWidth, windowWidth)
         (Player, X, x)
         (Player, XChange, xChange)
       cond:
@@ -181,28 +191,28 @@ let rules =
         session.insert(Player, XVelocity, 0f)
     rule preventMoveRight(Fact):
       what:
-        (Global, WindowWidth, windowWidth)
+        (Global, WorldWidth, worldWidth)
         (Player, X, x)
         (Player, Width, width)
         (Player, XChange, xChange)
       cond:
-        x > float(windowWidth) - width
+        x > worldWidth - width
       then:
         let oldX = x - xChange
-        let rightEdge = float(windowWidth) - width
+        let rightEdge = worldWidth - width
         session.insert(Player, X, min(oldX, rightEdge))
         session.insert(Player, XVelocity, 0f)
     rule preventMoveDown(Fact):
       what:
-        (Global, WindowHeight, windowHeight)
+        (Global, WorldHeight, worldHeight)
         (Player, Y, y)
         (Player, Height, height)
         (Player, YChange, yChange)
       cond:
-        y > float(windowHeight) - height
+        y > worldHeight - height
       then:
         let oldY = y - yChange
-        let bottomEdge = float(windowHeight) - height
+        let bottomEdge = worldHeight - height
         session.insert(Player, Y, min(oldY, bottomEdge))
         session.insert(Player, YVelocity, 0f)
 
@@ -285,8 +295,8 @@ proc init*(game: var Game) =
   session.insert(Global, PressedKeys, initHashSet[int]())
   session.insert(Player, X, 0f)
   session.insert(Player, Y, 0f)
-  session.insert(Player, Width, koalaWidth)
-  session.insert(Player, Height, koalaHeight)
+  session.insert(Player, Width, 1f)
+  session.insert(Player, Height, koalaHeight / koalaWidth)
   session.insert(Player, XVelocity, 0f)
   session.insert(Player, YVelocity, 0f)
   session.insert(Player, CanJump, false)
@@ -298,17 +308,15 @@ proc tick*(game: Game) =
   session.insert(Global, TotalTime, game.totalTime)
 
   let (windowWidth, windowHeight) = session.query(rules.getWindow)
+  let (worldWidth, worldHeight) = session.query(rules.getWorld)
   let player = session.query(rules.getPlayer)
 
   glClearColor(173/255, 216/255, 230/255, 1f)
   glClear(GL_COLOR_BUFFER_BIT)
   glViewport(0, 0, int32(windowWidth), int32(windowHeight))
 
-  let scaledTileSize = windowHeight / tiledMap.height
-
   var tiledMapEntity = game.tiledMapEntity
-  tiledMapEntity.project(float(windowWidth), float(windowHeight))
-  tiledMapEntity.scale(scaledTileSize, scaledTileSize)
+  tiledMapEntity.project(worldWidth, worldHeight)
   render(game, tiledMapEntity)
 
   let x =
@@ -323,7 +331,7 @@ proc tick*(game: Game) =
       player.width * -1
 
   var image = game.imageEntities[player.imageIndex]
-  image.project(float(windowWidth), float(windowHeight))
+  image.project(worldWidth, worldHeight)
   image.translate(x, player.y)
   image.scale(width, player.height)
   render(game, image)
