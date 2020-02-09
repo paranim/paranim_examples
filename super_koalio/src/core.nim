@@ -6,6 +6,8 @@ import pararules
 from tiles import nil
 import sets, tables
 from math import `mod`
+from glm import nil
+import paranim/math as pmath
 
 type
   Game* = object of RootGame
@@ -178,30 +180,6 @@ let rules =
       then:
         session.insert(Player, Direction, if xv > 0: Right else: Left)
     # prevent going through walls
-    rule preventMoveLeft(Fact):
-      what:
-        (Player, X, x)
-        (Player, XChange, xChange)
-      cond:
-        x < 0
-      then:
-        let oldX = x - xChange
-        let leftEdge = 0f
-        session.insert(Player, X, max(oldX, leftEdge))
-        session.insert(Player, XVelocity, 0f)
-    rule preventMoveRight(Fact):
-      what:
-        (Global, WorldWidth, worldWidth)
-        (Player, X, x)
-        (Player, Width, width)
-        (Player, XChange, xChange)
-      cond:
-        x > worldWidth - width
-      then:
-        let oldX = x - xChange
-        let rightEdge = worldWidth - width
-        session.insert(Player, X, min(oldX, rightEdge))
-        session.insert(Player, XVelocity, 0f)
     rule preventMoveDown(Fact):
       what:
         (Global, WorldHeight, worldHeight)
@@ -293,7 +271,7 @@ proc init*(game: var Game) =
 
   # set initial values
   session.insert(Global, PressedKeys, initHashSet[int]())
-  session.insert(Player, X, 0f)
+  session.insert(Player, X, 20f)
   session.insert(Player, Y, 0f)
   session.insert(Player, Width, 1f)
   session.insert(Player, Height, koalaHeight / koalaWidth)
@@ -315,8 +293,12 @@ proc tick*(game: Game) =
   glClear(GL_COLOR_BUFFER_BIT)
   glViewport(0, 0, int32(windowWidth), int32(windowHeight))
 
+  var camera = glm.mat3f(1)
+  camera.translate(player.x - worldWidth / 2, 0f)
+
   var tiledMapEntity = game.tiledMapEntity
   tiledMapEntity.project(worldWidth, worldHeight)
+  tiledMapEntity.invert(camera)
   render(game, tiledMapEntity)
 
   let x =
@@ -332,6 +314,7 @@ proc tick*(game: Game) =
 
   var image = game.imageEntities[player.imageIndex]
   image.project(worldWidth, worldHeight)
+  image.invert(camera)
   image.translate(x, player.y)
   image.scale(width, player.height)
   render(game, image)
