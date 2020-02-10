@@ -194,7 +194,8 @@ let rules =
           session.insert(Player, Y, oldY)
           session.insert(Player, YChange, 0f)
           session.insert(Player, YVelocity, 0f)
-          session.insert(Player, CanJump, true)
+          if yChange > 0:
+            session.insert(Player, CanJump, true)
 
 var session = initSession(Fact)
 
