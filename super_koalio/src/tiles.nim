@@ -61,3 +61,17 @@ proc loadTiledMap*(path: string): TiledMap =
     else:
       raise newException(Exception, "Encoding not supported")
     result.layers[name] = data
+
+proc touchingTile*(layer: seq[seq[int]], x: float, y: float, width: float, height: float): tuple[x: int, y: int] =
+  let
+    startX = int(x)
+    startY = int(y)
+    endX = int(x + width)
+    endY = int(y + height)
+  for tileX in startX .. endX:
+    for tileY in startY .. endY:
+      if tileX < 0 or tileX >= layer.len or tileY < 0 or tileY >= layer[tileX].len:
+        continue
+      elif layer[tileX][tileY] >= 0:
+        return (tileX, tileY)
+  (-1, -1)

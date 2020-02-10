@@ -19,10 +19,11 @@ type
 const
   rawImage = staticRead("assets/koalio.png")
   tiledMap = tiles.loadTiledMap("assets/level1.tmx")
+  wallLayer = tiledMap.layers["walls"]
   gravity = 3
   deceleration = 0.8
   damping = 0.1
-  maxVelocity = 16f
+  maxVelocity = 12f
   maxJumpVelocity = float(maxVelocity * 8)
   animationSecs = 0.2
   koalaWidth = 18f
@@ -95,18 +96,7 @@ let rules =
         (Player, Height, height)
         (Player, ImageIndex, imageIndex)
         (Player, Direction, direction)
-    # enable and perform jumping
-    rule allowJump(Fact):
-      what:
-        (Global, WorldHeight, worldHeight)
-        (Player, Height, height)
-        (Player, Y, y)
-        (Player, CanJump, canJump, then = false)
-      cond:
-        y > worldHeight - height
-        not canJump
-      then:
-        session.insert(Player, CanJump, true)
+    # perform jumping
     rule doJump(Fact):
       what:
         (Global, PressedKeys, keys)
@@ -180,19 +170,31 @@ let rules =
       then:
         session.insert(Player, Direction, if xv > 0: Right else: Left)
     # prevent going through walls
-    rule preventMoveDown(Fact):
+    rule preventMove(Fact):
       what:
-        (Global, WorldHeight, worldHeight)
+        (Player, X, x)
         (Player, Y, y)
+        (Player, Width, width)
         (Player, Height, height)
-        (Player, YChange, yChange)
+        (Player, XChange, xChange, then = false)
+        (Player, YChange, yChange, then = false)
       cond:
-        y > worldHeight - height
+        xChange != 0 or yChange != 0
       then:
-        let oldY = y - yChange
-        let bottomEdge = worldHeight - height
-        session.insert(Player, Y, min(oldY, bottomEdge))
-        session.insert(Player, YVelocity, 0f)
+        let
+          oldX = x - xChange
+          oldY = y - yChange
+          horizTile = tiles.touchingTile(wallLayer, x, oldY, width, height)
+          vertTile = tiles.touchingTile(wallLayer, oldX, y, width, height)
+        if horizTile != (-1, -1):
+          session.insert(Player, X, oldX)
+          session.insert(Player, XChange, 0f)
+          session.insert(Player, XVelocity, 0f)
+        if vertTile != (-1, -1):
+          session.insert(Player, Y, oldY)
+          session.insert(Player, YChange, 0f)
+          session.insert(Player, YVelocity, 0f)
+          session.insert(Player, CanJump, true)
 
 var session = initSession(Fact)
 
