@@ -218,6 +218,8 @@ proc mouseMoved*(xpos: float, ypos: float) =
   session.insert(Global, MousePosition, (xpos, ypos))
 
 proc windowResized*(width: int, height: int) =
+  if width == 0 or height == 0:
+    return
   session.insert(Global, WindowWidth, width)
   session.insert(Global, WindowHeight, height)
 
