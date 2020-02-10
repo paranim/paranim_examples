@@ -20,11 +20,11 @@ const
   rawImage = staticRead("assets/koalio.png")
   tiledMap = tiles.loadTiledMap("assets/level1.tmx")
   wallLayer = tiledMap.layers["walls"]
-  gravity = 3
-  deceleration = 0.8
-  damping = 0.1
-  maxVelocity = 12f
-  maxJumpVelocity = float(maxVelocity * 8)
+  gravity = 2.5
+  deceleration = 0.9
+  damping = 0.5
+  maxVelocity = 14f
+  maxJumpVelocity = float(maxVelocity * 4)
   animationSecs = 0.2
   koalaWidth = 18f
   koalaHeight = 26f
