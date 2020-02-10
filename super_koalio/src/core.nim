@@ -190,7 +190,7 @@ let rules =
           session.insert(Player, X, oldX)
           session.insert(Player, XChange, 0f)
           session.insert(Player, XVelocity, 0f)
-        if vertTile != (-1, -1):
+        elif vertTile != (-1, -1):
           session.insert(Player, Y, oldY)
           session.insert(Player, YChange, 0f)
           session.insert(Player, YVelocity, 0f)
