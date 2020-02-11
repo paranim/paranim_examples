@@ -200,24 +200,9 @@ let rules =
           session.insert(Player, YChange, 0f)
           session.insert(Player, YVelocity, 0f)
           if yChange > 0:
-            session.insert(Player, CanJump, true)
-    # destroy tiles when jumping from below
-    rule destroyTile(Fact):
-      what:
-        (Player, X, x)
-        (Player, Y, y)
-        (Player, Width, width)
-        (Player, Height, height)
-        (Player, XChange, xChange, then = false)
-        (Player, YChange, yChange, then = false)
-      cond:
-        yChange < 0
-      then:
-        let
-          oldX = x - xChange
-          vertTile = tiles.touchingTile(wallLayer, oldX, y, width, height)
-        if vertTile != (-1, -1):
-          session.insert(Player, LastHitTile, vertTile)
+            session.insert(Player, CanJump, true) # allow jumping
+          elif yChange < 0:
+            session.insert(Player, LastHitTile, vertTile) # hit a tile from below
 
 var session = initSession(Fact)
 
