@@ -13,9 +13,6 @@ type
   Game* = object of RootGame
     deltaTime*: float
     totalTime*: float
-    imageEntities: array[5, ImageEntity]
-    tiledMapEntity: InstancedImageEntity
-    tiles: seq[tuple[layerName: string, x: int, y: int]]
 
 const
   rawImage = staticRead("assets/koalio.png")
@@ -29,7 +26,11 @@ const
   koalaWidth = 18f
   koalaHeight = 26f
 
-var wallLayer = tiledMap.layers["walls"]
+var
+  imageEntities: array[5, ImageEntity]
+  tiledMapEntity: InstancedImageEntity
+  orderedTiles: seq[tuple[layerName: string, x: int, y: int]]
+  wallLayer = tiledMap.layers["walls"]
 
 type
   Id = enum
@@ -40,7 +41,7 @@ type
     PressedKeys, MouseClick, MouseX, MouseY,
     X, Y, Width, Height,
     XVelocity, YVelocity, XChange, YChange,
-    CanJump, ImageIndex, Direction, LastHitTile,
+    CanJump, ImageIndex, Direction,
   DirectionName = enum
     Left, Right
   IntSet = HashSet[int]
@@ -68,11 +69,20 @@ schema Fact(Id, Attr):
   CanJump: bool
   ImageIndex: int
   Direction: DirectionName
-  LastHitTile: XYTuple
 
 proc decelerate(velocity: float): float =
   let v = velocity * deceleration
   if abs(v) < damping: 0f else: v
+
+proc hitTile(x: int, y: int) =
+  # make a blank image
+  var e = initImageEntity([], 0, 0)
+  e.crop(0f, 0f, 0f, 0f)
+  # make the correct tile disappear
+  let tile = orderedTiles.find((layerName: "walls", x: x, y: y))
+  tiledMapEntity[tile] = e
+  # remove the tile from hit detection
+  wallLayer[x][y] = -1
 
 let rules =
   ruleset:
@@ -100,7 +110,6 @@ let rules =
         (Player, Height, height)
         (Player, ImageIndex, imageIndex)
         (Player, Direction, direction)
-        (Player, LastHitTile, lastHitTile)
     # perform jumping
     rule doJump(Fact):
       what:
@@ -200,9 +209,9 @@ let rules =
           session.insert(Player, YChange, 0f)
           session.insert(Player, YVelocity, 0f)
           if yChange > 0:
-            session.insert(Player, CanJump, true) # allow jumping
+            session.insert(Player, CanJump, true)
           elif yChange < 0:
-            session.insert(Player, LastHitTile, vertTile) # hit a tile from below
+            hitTile(vertTile.x, vertTile.y)
 
 var session = initSession(Fact)
 
@@ -247,9 +256,9 @@ proc init*(game: var Game) =
     let
       uncompiledImage = initImageEntity(data, width, height)
       image = compile(game, uncompiledImage)
-    for i in 0 ..< game.imageEntities.len:
-      game.imageEntities[i] = image
-      game.imageEntities[i].crop(float(i) * koalaWidth, 0f, koalaWidth, koalaHeight)
+    for i in 0 ..< imageEntities.len:
+      imageEntities[i] = image
+      imageEntities[i].crop(float(i) * koalaWidth, 0f, koalaWidth, koalaHeight)
 
   # load tiled map
   block:
@@ -280,8 +289,8 @@ proc init*(game: var Game) =
             var image = images[imageId]
             image.translate(float(x), float(y))
             uncompiledTiledMap.add(image)
-            game.tiles.add((layerName: layerName, x: x, y: y))
-    game.tiledMapEntity = compile(game, uncompiledTiledMap)
+            orderedTiles.add((layerName: layerName, x: x, y: y))
+    tiledMapEntity = compile(game, uncompiledTiledMap)
 
   # set initial values
   session.insert(Global, PressedKeys, initHashSet[int]())
@@ -294,9 +303,8 @@ proc init*(game: var Game) =
   session.insert(Player, CanJump, false)
   session.insert(Player, ImageIndex, 0)
   session.insert(Player, Direction, Right)
-  session.insert(Player, LastHitTile, (-1, -1))
 
-proc tick*(game: var Game) =
+proc tick*(game: Game) =
   # update and query the session
   session.insert(Global, DeltaTime, game.deltaTime)
   session.insert(Global, TotalTime, game.totalTime)
@@ -309,27 +317,12 @@ proc tick*(game: var Game) =
   glClear(GL_COLOR_BUFFER_BIT)
   glViewport(0, 0, int32(windowWidth), int32(windowHeight))
 
-  # if the player hit a tile from below
-  if player.lastHitTile != (-1, -1):
-    # make a blank image
-    var e = initImageEntity([], 0, 0)
-    e.crop(0f, 0f, 0f, 0f)
-    # make the correct tile disappear
-    let
-      (x, y) = player.lastHitTile
-      tile = game.tiles.find((layerName: "walls", x: x, y: y))
-    game.tiledMapEntity[tile] = e
-    # remove the tile from hit detection
-    wallLayer[x][y] = -1
-    # reset the last hit tile
-    session.insert(Player, LastHitTile, (-1, -1))
-
   # make the camera follow the player
   var camera = glm.mat3f(1)
   camera.translate(player.x - worldWidth / 2, 0f)
 
   # render the tiled map
-  var tiledMapEntity = game.tiledMapEntity
+  var tiledMapEntity = tiledMapEntity
   tiledMapEntity.project(worldWidth, worldHeight)
   tiledMapEntity.invert(camera)
   render(game, tiledMapEntity)
@@ -347,7 +340,7 @@ proc tick*(game: var Game) =
       player.width * -1
 
   # render the player
-  var image = game.imageEntities[player.imageIndex]
+  var image = imageEntities[player.imageIndex]
   image.project(worldWidth, worldHeight)
   image.invert(camera)
   image.translate(x, player.y)
