@@ -312,13 +312,14 @@ proc init*(game: var Game) =
   session.insert(Player, LastHitTile, (-1, -1))
 
 proc tick*(game: var Game) =
+  # update and query the session
   session.insert(Global, DeltaTime, game.deltaTime)
   session.insert(Global, TotalTime, game.totalTime)
-
   let (windowWidth, windowHeight) = session.query(rules.getWindow)
   let (worldWidth, worldHeight) = session.query(rules.getWorld)
   let player = session.query(rules.getPlayer)
 
+  # clear the frame
   glClearColor(173/255, 216/255, 230/255, 1f)
   glClear(GL_COLOR_BUFFER_BIT)
   glViewport(0, 0, int32(windowWidth), int32(windowHeight))
@@ -338,14 +339,17 @@ proc tick*(game: var Game) =
     # reset the last hit tile
     session.insert(Player, LastHitTile, (-1, -1))
 
+  # make the camera follow the player
   var camera = glm.mat3f(1)
   camera.translate(player.x - worldWidth / 2, 0f)
 
+  # render the tiled map
   var tiledMapEntity = game.tiledMapEntity
   tiledMapEntity.project(worldWidth, worldHeight)
   tiledMapEntity.invert(camera)
   render(game, tiledMapEntity)
 
+  # get the x and width based on the player's direction
   let x =
     if player.direction == Right:
       player.x
@@ -357,6 +361,7 @@ proc tick*(game: var Game) =
     else:
       player.width * -1
 
+  # render the player
   var image = game.imageEntities[player.imageIndex]
   image.project(worldWidth, worldHeight)
   image.invert(camera)
