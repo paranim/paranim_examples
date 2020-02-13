@@ -17,6 +17,7 @@ type
 const
   charTileCount = 8 # number of rows and columns in a character's spritesheet
   charTileSize = 256 # the width and height of a given tile in a character's spritesheet
+  verticalTiles = 7 # number of tiles that span the height of the screen
   rawPlayerImage = staticRead("assets/characters/male_light.png")
   tiledMap = tiles.loadTiledMap("assets/level1.tmx")
   deceleration = 0.9
@@ -41,7 +42,7 @@ type
     PressedKeys, MouseClick, MouseX, MouseY,
     X, Y, Width, Height,
     XVelocity, YVelocity, XChange, YChange,
-    CanJump, ImageIndex, Direction,
+    CanJump, Direction,
   DirectionName = enum
     Left, Right
   IntSet = HashSet[int]
@@ -66,22 +67,11 @@ schema Fact(Id, Attr):
   XChange: float
   YChange: float
   CanJump: bool
-  ImageIndex: int
   Direction: DirectionName
 
 proc decelerate(velocity: float): float =
   let v = velocity * deceleration
   if abs(v) < damping: 0f else: v
-
-proc hitTile(x: int, y: int) =
-  # make a blank image
-  var e = initImageEntity([], 0, 0)
-  e.crop(0f, 0f, 0f, 0f)
-  # make the correct tile disappear
-  let tile = orderedTiles.find((layerName: "walls", x: x, y: y))
-  tiledMapEntity[tile] = e
-  # remove the tile from hit detection
-  wallLayer[x][y] = -1
 
 let rules =
   ruleset:
@@ -91,7 +81,7 @@ let rules =
         (Global, WindowWidth, windowWidth)
         (Global, WindowHeight, windowHeight)
       then:
-        let tileSize = windowHeight / tiledMap.height
+        let tileSize = windowHeight / verticalTiles
         session.insert(Global, WorldWidth, float(windowWidth) / tileSize)
         session.insert(Global, WorldHeight, float(windowHeight) / tileSize)
     rule getWorld(Fact):
@@ -107,19 +97,7 @@ let rules =
         (Player, Y, y)
         (Player, Width, width)
         (Player, Height, height)
-        (Player, ImageIndex, imageIndex)
         (Player, Direction, direction)
-    # perform jumping
-    rule doJump(Fact):
-      what:
-        (Global, PressedKeys, keys)
-        (Player, CanJump, canJump, then = false)
-      cond:
-        keys.contains(int(GLFWKey.Up))
-        canJump
-      then:
-        session.insert(Player, CanJump, false)
-        session.insert(Player, YVelocity, -1 * maxJumpVelocity)
     # move the player's x,y position and animate
     rule movePlayer(Fact):
       what:
@@ -145,73 +123,6 @@ let rules =
         session.insert(Player, YChange, yChange)
         session.insert(Player, X, x + xChange)
         session.insert(Player, Y, y + yChange)
-    rule animateStanding(Fact):
-      what:
-        (Player, XVelocity, xv)
-        (Player, YVelocity, yv)
-      cond:
-        xv == 0
-        yv == 0
-      then:
-        session.insert(Player, ImageIndex, 0)
-    rule animateJumping(Fact):
-      what:
-        (Player, YVelocity, yv)
-      cond:
-        yv != 0
-      then:
-        session.insert(Player, ImageIndex, 1)
-    rule animateWalking(Fact):
-      what:
-        (Global, TotalTime, tt)
-        (Player, XVelocity, xv)
-        (Player, YVelocity, yv)
-      cond:
-        xv != 0
-        yv == 0
-      then:
-        let
-          cycleTime = tt mod (animationSecs * 3)
-          index = int(cycleTime / animationSecs)
-        session.insert(Player, ImageIndex, index + 2)
-    rule updateDirection(Fact):
-      what:
-        (Player, XVelocity, xv)
-      cond:
-        xv != 0
-      then:
-        session.insert(Player, Direction, if xv > 0: Right else: Left)
-    # prevent going through walls
-    #[
-    rule preventMove(Fact):
-      what:
-        (Player, X, x)
-        (Player, Y, y)
-        (Player, Width, width)
-        (Player, Height, height)
-        (Player, XChange, xChange, then = false)
-        (Player, YChange, yChange, then = false)
-      cond:
-        xChange != 0 or yChange != 0
-      then:
-        let
-          oldX = x - xChange
-          oldY = y - yChange
-          horizTile = tiles.touchingTile(wallLayer, x, oldY, width, height)
-          vertTile = tiles.touchingTile(wallLayer, oldX, y, width, height)
-        if horizTile != (-1, -1):
-          session.insert(Player, X, oldX)
-          session.insert(Player, XChange, 0f)
-          session.insert(Player, XVelocity, 0f)
-        elif vertTile != (-1, -1):
-          session.insert(Player, Y, oldY)
-          session.insert(Player, YChange, 0f)
-          session.insert(Player, YVelocity, 0f)
-          if yChange > 0:
-            session.insert(Player, CanJump, true)
-          elif yChange < 0:
-            hitTile(vertTile.x, vertTile.y)
-            ]#
 
 var session = initSession(Fact)
 
@@ -265,9 +176,6 @@ proc init*(game: var Game) =
       uncompiledImage = initImageEntity(data, width, height)
     playerImage = compile(game, uncompiledImage)
 
-  # load images
-  playerImages = createGrid(playerImage, charTileCount, charTileSize, 128)
-
   # load tiled map
   block:
     # load tileset image
@@ -300,16 +208,19 @@ proc init*(game: var Game) =
             orderedTiles.add((layerName: layerName, x: x, y: y))
     tiledMapEntity = compile(game, uncompiledTiledMap)
 
-  # set initial values
+  # init global values
   session.insert(Global, PressedKeys, initHashSet[int]())
+
+  # init player
+  let maskSize = 128
+  playerImages = createGrid(playerImage, charTileCount, charTileSize, maskSize)
   session.insert(Player, X, 20f)
   session.insert(Player, Y, 0f)
-  session.insert(Player, Width, 1f)
-  session.insert(Player, Height, 1f)
+  session.insert(Player, Width, maskSize / charTileSize)
+  session.insert(Player, Height, maskSize / charTileSize)
   session.insert(Player, XVelocity, 0f)
   session.insert(Player, YVelocity, 0f)
   session.insert(Player, CanJump, false)
-  session.insert(Player, ImageIndex, 0)
   session.insert(Player, Direction, Right)
 
 proc tick*(game: Game) =
@@ -335,23 +246,11 @@ proc tick*(game: Game) =
   tiledMapEntity.invert(camera)
   render(game, tiledMapEntity)
 
-  # get the x and width based on the player's direction
-  let x =
-    if player.direction == Right:
-      player.x
-    else:
-      player.x + player.width
-  let width =
-    if player.direction == Right:
-      player.width
-    else:
-      player.width * -1
-
   # render the player
   var image = playerImages[0][0]
   image.project(worldWidth, worldHeight)
   image.invert(camera)
-  image.translate(x, player.y)
-  image.scale(width, player.height)
+  image.translate(player.x, player.y)
+  image.scale(player.width, player.height)
   render(game, image)
 
