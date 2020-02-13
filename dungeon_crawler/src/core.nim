@@ -15,22 +15,22 @@ type
     totalTime*: float
 
 const
-  rawImage = staticRead("assets/koalio.png")
+  charTileCount = 8 # number of rows and columns in a character's spritesheet
+  charTileSize = 256 # the width and height of a given tile in a character's spritesheet
+  rawPlayerImage = staticRead("assets/characters/male_light.png")
   tiledMap = tiles.loadTiledMap("assets/level1.tmx")
-  gravity = 2.5
   deceleration = 0.9
   damping = 0.5
   maxVelocity = 14f
   maxJumpVelocity = float(maxVelocity * 4)
   animationSecs = 0.2
-  koalaWidth = 18f
-  koalaHeight = 26f
 
 var
   imageEntities: array[5, ImageEntity]
   tiledMapEntity: InstancedImageEntity
   orderedTiles: seq[tuple[layerName: string, x: int, y: int]]
   wallLayer = tiledMap.layers["walls"]
+  playerImages: array[charTileCount, array[charTileCount, ImageEntity]]
 
 type
   Id = enum
@@ -137,7 +137,6 @@ let rules =
             maxVelocity
           else:
             xv
-        yv = yv + gravity
         let xChange = xv * dt
         let yChange = yv * dt
         session.insert(Player, XVelocity, decelerate(xv))
@@ -242,6 +241,13 @@ proc windowResized*(width: int, height: int) =
   session.insert(Global, WindowWidth, width)
   session.insert(Global, WindowHeight, height)
 
+proc createGrid(image: ImageEntity, count: static[int], tileSize: int, maskSize: int): array[count, array[count, ImageEntity]] =
+  let offset = (tileSize - maskSize) / 2
+  for y in 0 ..< count:
+    for x in 0 ..< count:
+      result[x][y] = image
+      result[x][y].crop(x.float + offset, y.float + offset, maskSize.float, maskSize.float)
+
 proc init*(game: var Game) =
   # opengl
   doAssert glInit()
@@ -249,17 +255,18 @@ proc init*(game: var Game) =
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
   # load image
+  var playerImage: ImageEntity
   block:
     var
       width, height, channels: int
       data: seq[uint8]
-    data = stbi.loadFromMemory(cast[seq[uint8]](rawImage), width, height, channels, stbi.RGBA)
+    data = stbi.loadFromMemory(cast[seq[uint8]](rawPlayerImage), width, height, channels, stbi.RGBA)
     let
       uncompiledImage = initImageEntity(data, width, height)
-      image = compile(game, uncompiledImage)
-    for i in 0 ..< imageEntities.len:
-      imageEntities[i] = image
-      imageEntities[i].crop(float(i) * koalaWidth, 0f, koalaWidth, koalaHeight)
+    playerImage = compile(game, uncompiledImage)
+
+  # load images
+  playerImages = createGrid(playerImage, charTileCount, charTileSize, 128)
 
   # load tiled map
   block:
@@ -298,7 +305,7 @@ proc init*(game: var Game) =
   session.insert(Player, X, 20f)
   session.insert(Player, Y, 0f)
   session.insert(Player, Width, 1f)
-  session.insert(Player, Height, koalaHeight / koalaWidth)
+  session.insert(Player, Height, 1f)
   session.insert(Player, XVelocity, 0f)
   session.insert(Player, YVelocity, 0f)
   session.insert(Player, CanJump, false)
@@ -341,7 +348,7 @@ proc tick*(game: Game) =
       player.width * -1
 
   # render the player
-  var image = imageEntities[player.imageIndex]
+  var image = playerImages[0][0]
   image.project(worldWidth, worldHeight)
   image.invert(camera)
   image.translate(x, player.y)
