@@ -45,7 +45,6 @@ type
   DirectionName = enum
     Left, Right
   IntSet = HashSet[int]
-  XYTuple = tuple[x: int, y: int]
 
 schema Fact(Id, Attr):
   DeltaTime: float
