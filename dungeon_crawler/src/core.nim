@@ -5,7 +5,7 @@ import paranim/gl, paranim/gl/entities
 import pararules
 from tiles import nil
 import sets, tables
-from math import nil
+from math import `mod`
 from glm import nil
 import paranim/math as pmath
 
@@ -21,7 +21,7 @@ type
     PressedKeys, MouseClick, MouseX, MouseY,
     X, Y, Width, Height,
     XVelocity, YVelocity, XChange, YChange,
-    Direction,
+    ImageIndex, Direction,
   DirectionName = enum
     West, NorthWest, North, NorthEast,
     East, SouthEast, South, SouthWest,
@@ -46,6 +46,7 @@ schema Fact(Id, Attr):
   YVelocity: float
   XChange: float
   YChange: float
+  ImageIndex: int
   Direction: DirectionName
 
 const
@@ -99,6 +100,7 @@ let rules =
         (Player, Width, width)
         (Player, Height, height)
         (Player, Direction, direction)
+        (Player, ImageIndex, imageIndex)
     # move the player's x,y position and animate
     rule movePlayer(Fact):
       what:
@@ -131,6 +133,18 @@ let rules =
         session.insert(Player, YChange, yChange)
         session.insert(Player, X, x + xChange)
         session.insert(Player, Y, y + yChange)
+    rule animate(Fact):
+      what:
+        (Global, TotalTime, tt)
+        (Player, XVelocity, xv)
+        (Player, YVelocity, yv)
+      cond:
+        xv != 0 or yv != 0
+      then:
+        let
+          cycleTime = tt mod (animationSecs * 4)
+          index = int(cycleTime / animationSecs)
+        session.insert(Player, ImageIndex, index)
     rule updateDirection(Fact):
       what:
         (Player, XVelocity, xv)
@@ -237,6 +251,7 @@ proc init*(game: var Game) =
   session.insert(Player, Height, maskSize / charTileSize)
   session.insert(Player, XVelocity, 0f)
   session.insert(Player, YVelocity, 0f)
+  session.insert(Player, ImageIndex, 0)
   session.insert(Player, Direction, South)
 
 proc tick*(game: Game) =
@@ -263,7 +278,7 @@ proc tick*(game: Game) =
   render(game, tiledMapEntity)
 
   # render the player
-  var image = playerImages[0][player.direction.ord]
+  var image = playerImages[player.imageIndex.ord][player.direction.ord]
   image.project(worldWidth, worldHeight)
   image.invert(camera)
   image.translate(player.x, player.y)
