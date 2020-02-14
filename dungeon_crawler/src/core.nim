@@ -5,7 +5,7 @@ import paranim/gl, paranim/gl/entities
 import pararules
 from tiles import nil
 import sets, tables
-from math import `mod`
+from math import nil
 from glm import nil
 import paranim/math as pmath
 
@@ -13,26 +13,6 @@ type
   Game* = object of RootGame
     deltaTime*: float
     totalTime*: float
-
-const
-  charTileCount = 8 # number of rows and columns in a character's spritesheet
-  charTileSize = 256 # the width and height of a given tile in a character's spritesheet
-  verticalTiles = 7 # number of tiles that span the height of the screen
-  rawPlayerImage = staticRead("assets/characters/male_light.png")
-  tiledMap = tiles.loadTiledMap("assets/level1.tmx")
-  deceleration = 0.9
-  damping = 0.5
-  maxVelocity = 4f
-  animationSecs = 0.2
-
-var
-  imageEntities: array[5, ImageEntity]
-  tiledMapEntity: InstancedImageEntity
-  orderedTiles: seq[tuple[layerName: string, x: int, y: int]]
-  wallLayer = tiledMap.layers["walls"]
-  playerImages: array[charTileCount, array[charTileCount, ImageEntity]]
-
-type
   Id = enum
     Global, Player
   Attr = enum
@@ -43,7 +23,8 @@ type
     XVelocity, YVelocity, XChange, YChange,
     Direction,
   DirectionName = enum
-    Left, Right
+    West, NorthWest, North, NorthEast,
+    East, SouthEast, South, SouthWest,
   IntSet = HashSet[int]
 
 schema Fact(Id, Attr):
@@ -66,6 +47,28 @@ schema Fact(Id, Attr):
   XChange: float
   YChange: float
   Direction: DirectionName
+
+const
+  charTileCount = 8 # number of rows and columns in a character's spritesheet
+  charTileSize = 256 # the width and height of a given tile in a character's spritesheet
+  verticalTiles = 7 # number of tiles that span the height of the screen
+  rawPlayerImage = staticRead("assets/characters/male_light.png")
+  tiledMap = tiles.loadTiledMap("assets/level1.tmx")
+  deceleration = 0.9
+  damping = 0.5
+  maxVelocity = 4f
+  animationSecs = 0.2
+  velocities = {(-1, 0): West, (-1, -1): NorthWest,
+                (0, -1): North, (1, -1): NorthEast,
+                (1, 0): East, (1, 1): SouthEast,
+                (0, 1): South, (-1, 1): SouthWest}.toTable
+
+var
+  imageEntities: array[5, ImageEntity]
+  tiledMapEntity: InstancedImageEntity
+  orderedTiles: seq[tuple[layerName: string, x: int, y: int]]
+  wallLayer = tiledMap.layers["walls"]
+  playerImages: array[charTileCount, array[charTileCount, ImageEntity]]
 
 proc decelerate(velocity: float): float =
   let v = velocity * deceleration
@@ -128,6 +131,15 @@ let rules =
         session.insert(Player, YChange, yChange)
         session.insert(Player, X, x + xChange)
         session.insert(Player, Y, y + yChange)
+    rule updateDirection(Fact):
+      what:
+        (Player, XVelocity, xv)
+        (Player, YVelocity, yv)
+      cond:
+        xv != 0 or yv != 0
+      then:
+        let v = (math.sgn(xv), math.sgn(yv))
+        session.insert(Player, Direction, velocities[v])
 
 var session = initSession(Fact)
 
@@ -162,7 +174,7 @@ proc createGrid(image: ImageEntity, count: static[int], tileSize: int, maskSize:
   for y in 0 ..< count:
     for x in 0 ..< count:
       result[x][y] = image
-      result[x][y].crop(x.float + offset, y.float + offset, maskSize.float, maskSize.float)
+      result[x][y].crop(float(x * tileSize) + offset, float(y * tileSize) + offset, maskSize.float, maskSize.float)
 
 proc init*(game: var Game) =
   # opengl
@@ -225,7 +237,7 @@ proc init*(game: var Game) =
   session.insert(Player, Height, maskSize / charTileSize)
   session.insert(Player, XVelocity, 0f)
   session.insert(Player, YVelocity, 0f)
-  session.insert(Player, Direction, Right)
+  session.insert(Player, Direction, South)
 
 proc tick*(game: Game) =
   # update and query the session
@@ -251,7 +263,7 @@ proc tick*(game: Game) =
   render(game, tiledMapEntity)
 
   # render the player
-  var image = playerImages[0][0]
+  var image = playerImages[0][player.direction.ord]
   image.project(worldWidth, worldHeight)
   image.invert(camera)
   image.translate(player.x, player.y)
