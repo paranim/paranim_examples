@@ -75,6 +75,20 @@ proc decelerate(velocity: float): float =
   let v = velocity * deceleration
   if abs(v) < damping: 0f else: v
 
+# http://clintbellanger.net/articles/isometric_math/
+
+const
+  tileWidthHalf = 1 / 2
+  tileHeightHalf = 1 / 4
+
+proc isometricToScreen(x: float, y: float): tuple[x: float, y: float] =
+  (x: (x - y) * tileWidthHalf,
+   y: (x + y) * tileHeightHalf)
+
+proc screenToIsometric(x: float, y: float): tuple[x: float, y: float] =
+  (x: ((x / tileWidthHalf) + (y / tileHeightHalf)) / 2,
+   y: ((y / tileHeightHalf) - (x / tileWidthHalf)) / 2)
+
 let rules =
   ruleset:
     # getters
@@ -154,6 +168,33 @@ let rules =
       then:
         let v = (math.sgn(xv), math.sgn(yv))
         session.insert(Player, Direction, velocities[v])
+    # prevent going through walls
+    rule preventMove(Fact):
+      what:
+        (Player, X, x)
+        (Player, Y, y)
+        (Player, Width, width)
+        (Player, Height, height)
+        (Player, XChange, xChange, then = false)
+        (Player, YChange, yChange, then = false)
+      cond:
+        xChange != 0 or yChange != 0
+      then:
+        let
+          oldX = x - xChange
+          oldY = y - yChange
+          (horizX, horizY) = screenToIsometric(x, oldY)
+          (vertX, vertY) = screenToIsometric(oldX, y)
+          horizTile = tiles.touchingTile(wallLayer, horizX, horizY, width, height)
+          vertTile = tiles.touchingTile(wallLayer, vertX, vertY, width, height)
+        if horizTile != (-1, -1):
+          session.insert(Player, X, oldX)
+          session.insert(Player, XChange, 0f)
+          session.insert(Player, XVelocity, 0f)
+        elif vertTile != (-1, -1):
+          session.insert(Player, Y, oldY)
+          session.insert(Player, YChange, 0f)
+          session.insert(Player, YVelocity, 0f)
 
 var session = initSession(Fact)
 
@@ -189,16 +230,6 @@ proc createGrid(image: ImageEntity, count: static[int], tileSize: int, maskSize:
     for x in 0 ..< count:
       result[x][y] = image
       result[x][y].crop(float(x * tileSize) + offset, float(y * tileSize) + offset, maskSize.float, maskSize.float)
-
-# http://clintbellanger.net/articles/isometric_math/
-
-const
-  tileWidthHalf = 1 / 2
-  tileHeightHalf = 1 / 4
-
-proc isometricToScreen(x: float, y: float): tuple[x: float, y: float] =
-  (x: (x - y) * tileWidthHalf,
-   y: (x + y) * tileHeightHalf)
 
 proc init*(game: var Game) =
   # opengl
