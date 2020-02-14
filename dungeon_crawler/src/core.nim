@@ -203,8 +203,7 @@ proc init*(game: var Game) =
       width, height, channels: int
       data: seq[uint8]
     data = stbi.loadFromMemory(cast[seq[uint8]](rawPlayerImage), width, height, channels, stbi.RGBA)
-    let
-      uncompiledImage = initImageEntity(data, width, height)
+    let uncompiledImage = initImageEntity(data, width, height)
     playerImage = compile(game, uncompiledImage)
 
   # load tiled map
@@ -263,7 +262,7 @@ proc tick*(game: Game) =
   let player = session.query(rules.getPlayer)
 
   # clear the frame
-  glClearColor(173/255, 216/255, 230/255, 1f)
+  glClearColor(150/255, 150/255, 150/255, 1f)
   glClear(GL_COLOR_BUFFER_BIT)
   glViewport(0, 0, int32(windowWidth), int32(windowHeight))
 
