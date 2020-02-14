@@ -190,6 +190,16 @@ proc createGrid(image: ImageEntity, count: static[int], tileSize: int, maskSize:
       result[x][y] = image
       result[x][y].crop(float(x * tileSize) + offset, float(y * tileSize) + offset, maskSize.float, maskSize.float)
 
+# http://clintbellanger.net/articles/isometric_math/
+
+const
+  tileWidthHalf = 1 / 2
+  tileHeightHalf = 1 / 4
+
+proc isometricToScreen(x: float, y: float): tuple[x: float, y: float] =
+  (x: (x - y) * tileWidthHalf,
+   y: (x + y) * tileHeightHalf)
+
 proc init*(game: var Game) =
   # opengl
   doAssert glInit()
@@ -233,7 +243,8 @@ proc init*(game: var Game) =
           let imageId = layerData[x][y]
           if imageId >= 0:
             var image = images[imageId]
-            image.translate(float(x), float(y))
+            let (screenX, screenY) = isometricToScreen(float(x), float(y))
+            image.translate(screenX, screenY)
             uncompiledTiledMap.add(image)
             orderedTiles.add((layerName: layerName, x: x, y: y))
     tiledMapEntity = compile(game, uncompiledTiledMap)
@@ -244,8 +255,9 @@ proc init*(game: var Game) =
   # init player
   let maskSize = 128
   playerImages = createGrid(playerImage, charTileCount, charTileSize, maskSize)
-  session.insert(Player, X, 20f)
-  session.insert(Player, Y, 0f)
+  let (x, y) = isometricToScreen(5, 5)
+  session.insert(Player, X, x)
+  session.insert(Player, Y, y)
   session.insert(Player, Width, maskSize / charTileSize)
   session.insert(Player, Height, maskSize / charTileSize)
   session.insert(Player, XVelocity, 0f)
