@@ -183,7 +183,7 @@ let rules =
       then:
         session.insert(Player, Direction, if xv > 0: Right else: Left)
     # prevent going through walls
-    rule preventMove(Fact):
+    rule preventMoveX(Fact):
       what:
         (Player, X, x)
         (Player, Y, y)
@@ -192,18 +192,32 @@ let rules =
         (Player, XChange, xChange, then = false)
         (Player, YChange, yChange, then = false)
       cond:
-        xChange != 0 or yChange != 0
+        xChange != 0
       then:
         let
           oldX = x - xChange
           oldY = y - yChange
           horizTile = tiles.touchingTile(wallLayer, x, oldY, width, height)
-          vertTile = tiles.touchingTile(wallLayer, oldX, y, width, height)
         if horizTile != (-1, -1):
           session.insert(Player, X, oldX)
           session.insert(Player, XChange, 0f)
           session.insert(Player, XVelocity, 0f)
-        elif vertTile != (-1, -1):
+    rule preventMoveY(Fact):
+      what:
+        (Player, X, x)
+        (Player, Y, y)
+        (Player, Width, width)
+        (Player, Height, height)
+        (Player, XChange, xChange, then = false)
+        (Player, YChange, yChange, then = false)
+      cond:
+        yChange != 0
+      then:
+        let
+          oldX = x - xChange
+          oldY = y - yChange
+          vertTile = tiles.touchingTile(wallLayer, oldX, y, width, height)
+        if vertTile != (-1, -1):
           session.insert(Player, Y, oldY)
           session.insert(Player, YChange, 0f)
           session.insert(Player, YVelocity, 0f)
