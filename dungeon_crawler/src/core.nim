@@ -22,8 +22,7 @@ const
   tiledMap = tiles.loadTiledMap("assets/level1.tmx")
   deceleration = 0.9
   damping = 0.5
-  maxVelocity = 14f
-  maxJumpVelocity = float(maxVelocity * 4)
+  maxVelocity = 4f
   animationSecs = 0.2
 
 var
@@ -42,7 +41,7 @@ type
     PressedKeys, MouseClick, MouseX, MouseY,
     X, Y, Width, Height,
     XVelocity, YVelocity, XChange, YChange,
-    CanJump, Direction,
+    Direction,
   DirectionName = enum
     Left, Right
   IntSet = HashSet[int]
@@ -66,7 +65,6 @@ schema Fact(Id, Attr):
   YVelocity: float
   XChange: float
   YChange: float
-  CanJump: bool
   Direction: DirectionName
 
 proc decelerate(velocity: float): float =
@@ -115,6 +113,13 @@ let rules =
             maxVelocity
           else:
             xv
+        yv =
+          if keys.contains(int(GLFWKey.Up)):
+            -1 * maxVelocity
+          elif keys.contains(int(GLFWKey.Down)):
+            maxVelocity
+          else:
+            yv
         let xChange = xv * dt
         let yChange = yv * dt
         session.insert(Player, XVelocity, decelerate(xv))
@@ -220,7 +225,6 @@ proc init*(game: var Game) =
   session.insert(Player, Height, maskSize / charTileSize)
   session.insert(Player, XVelocity, 0f)
   session.insert(Player, YVelocity, 0f)
-  session.insert(Player, CanJump, false)
   session.insert(Player, Direction, Right)
 
 proc tick*(game: Game) =
@@ -238,7 +242,7 @@ proc tick*(game: Game) =
 
   # make the camera follow the player
   var camera = glm.mat3f(1)
-  camera.translate(player.x - worldWidth / 2, 0f)
+  camera.translate(player.x - worldWidth / 2, player.y - worldHeight / 2)
 
   # render the tiled map
   var tiledMapEntity = tiledMapEntity
