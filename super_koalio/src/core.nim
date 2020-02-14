@@ -13,26 +13,6 @@ type
   Game* = object of RootGame
     deltaTime*: float
     totalTime*: float
-
-const
-  rawImage = staticRead("assets/koalio.png")
-  tiledMap = tiles.loadTiledMap("assets/level1.tmx")
-  gravity = 2.5
-  deceleration = 0.9
-  damping = 0.5
-  maxVelocity = 14f
-  maxJumpVelocity = float(maxVelocity * 4)
-  animationSecs = 0.2
-  koalaWidth = 18f
-  koalaHeight = 26f
-
-var
-  imageEntities: array[5, ImageEntity]
-  tiledMapEntity: InstancedImageEntity
-  orderedTiles: seq[tuple[layerName: string, x: int, y: int]]
-  wallLayer = tiledMap.layers["walls"]
-
-type
   Id = enum
     Global, Player
   Attr = enum
@@ -68,6 +48,24 @@ schema Fact(Id, Attr):
   CanJump: bool
   ImageIndex: int
   Direction: DirectionName
+
+const
+  rawImage = staticRead("assets/koalio.png")
+  tiledMap = tiles.loadTiledMap("assets/level1.tmx")
+  gravity = 2.5
+  deceleration = 0.9
+  damping = 0.5
+  maxVelocity = 14f
+  maxJumpVelocity = float(maxVelocity * 4)
+  animationSecs = 0.2
+  koalaWidth = 18f
+  koalaHeight = 26f
+
+var
+  imageEntities: array[5, ImageEntity]
+  tiledMapEntity: InstancedImageEntity
+  orderedTiles: seq[tuple[layerName: string, x: int, y: int]]
+  wallLayer = tiledMap.layers["walls"]
 
 proc decelerate(velocity: float): float =
   let v = velocity * deceleration
