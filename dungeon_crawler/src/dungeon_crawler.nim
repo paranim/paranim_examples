@@ -30,7 +30,7 @@ when isMainModule:
   glfwWindowHint(GLFWOpenglProfile, GLFW_OPENGL_CORE_PROFILE)
   glfwWindowHint(GLFWResizable, GLFW_TRUE)
 
-  let w: GLFWWindow = glfwCreateWindow(800, 600, "Super Koalio")
+  let w: GLFWWindow = glfwCreateWindow(800, 600, "Dungeon Crawler")
   if w == nil:
     quit(-1)
 
