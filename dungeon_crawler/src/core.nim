@@ -9,7 +9,10 @@ from algorithm import sort
 from math import `mod`
 from glm import nil
 import paranim/math as pmath
-import rooms
+from rooms import nil
+import random
+
+randomize()
 
 type
   Game* = object of RootGame
@@ -56,11 +59,14 @@ const
   charTileCount = 8 # number of rows and columns in a character's spritesheet
   charTileSize = 256 # the width and height of a given tile in a character's spritesheet
   verticalTiles = 7 # number of tiles that span the height of the screen
-  rawImages = {"male_light": (maskSize: 128, data: staticRead("assets/characters/male_light.png"))}.toTable
+  rawImages = {"male_light": (maskSize: 128, data: staticRead("assets/characters/male_light.png")),
+               "ogre":       (maskSize: 256, data: staticRead("assets/characters/ogre.png")),
+               "elemental":  (maskSize: 256, data: staticRead("assets/characters/elemental.png"))}.toTable
   tiledMap = tiles.loadTiledMap("assets/level1.tmx")
   deceleration = 0.9
   damping = 0.5
   maxVelocity = 4f
+  maxEnemyVelocity = maxVelocity / 2
   animationSecs = 0.2
   velocities = {(-1, 0): West, (-1, -1): NorthWest,
                 (0, -1): North, (1, -1): NorthEast,
@@ -138,7 +144,7 @@ let rules =
         (id, Direction, direction)
         (id, ImageIndex, imageIndex)
         (id, ImageName, imageName)
-    # move the player's x,y position and animate
+    # move the characters and animate
     rule movePlayer(Fact):
       what:
         (Global, DeltaTime, dt)
@@ -170,36 +176,64 @@ let rules =
         session.insert(Player, YChange, yChange)
         session.insert(Player, X, x + xChange)
         session.insert(Player, Y, y + yChange)
+    rule moveEnemy(Fact):
+      what:
+        (Global, DeltaTime, dt)
+        (id, X, x, then = false)
+        (id, Y, y, then = false)
+        (id, XVelocity, xv, then = false)
+        (id, YVelocity, yv, then = false)
+      cond:
+        id != Player.ord
+      then:
+        xv =
+          if xv == 0:
+            float(rand(2) - 1) * maxEnemyVelocity
+          else:
+            xv
+        yv =
+          if yv == 0:
+            float(rand(2) - 1) * maxEnemyVelocity
+          else:
+            yv
+        let xChange = xv * dt
+        let yChange = yv * dt
+        session.insert(id, XVelocity, decelerate(xv))
+        session.insert(id, YVelocity, decelerate(yv))
+        session.insert(id, XChange, xChange)
+        session.insert(id, YChange, yChange)
+        session.insert(id, X, x + xChange)
+        session.insert(id, Y, y + yChange)
     rule animate(Fact):
       what:
         (Global, TotalTime, tt)
-        (Player, XVelocity, xv)
-        (Player, YVelocity, yv)
+        (id, XVelocity, xv)
+        (id, YVelocity, yv)
       cond:
         xv != 0 or yv != 0
       then:
         let
           cycleTime = tt mod (animationSecs * 4)
           index = int(cycleTime / animationSecs)
-        session.insert(Player, ImageIndex, index)
+        session.insert(id, ImageIndex, index)
     rule updateDirection(Fact):
       what:
-        (Player, XVelocity, xv)
-        (Player, YVelocity, yv)
+        (id, XVelocity, xv)
+        (id, YVelocity, yv)
       cond:
         xv != 0 or yv != 0
       then:
         let v = (math.sgn(xv), math.sgn(yv))
-        session.insert(Player, Direction, velocities[v])
+        session.insert(id, Direction, velocities[v])
     # prevent going through walls
     rule preventMoveX(Fact):
       what:
-        (Player, X, x)
-        (Player, Y, y)
-        (Player, Width, width)
-        (Player, Height, height)
-        (Player, XChange, xChange, then = false)
-        (Player, YChange, yChange, then = false)
+        (id, X, x)
+        (id, Y, y)
+        (id, Width, width)
+        (id, Height, height)
+        (id, XChange, xChange, then = false)
+        (id, YChange, yChange, then = false)
       cond:
         xChange != 0
       then:
@@ -209,17 +243,17 @@ let rules =
           (horizX, horizY) = screenToIsometric(x, oldY)
           horizTile = tiles.touchingTile(wallLayer, horizX, horizY, width, height)
         if horizTile != (-1, -1):
-          session.insert(Player, X, oldX)
-          session.insert(Player, XChange, 0f)
-          session.insert(Player, XVelocity, 0f)
+          session.insert(id, X, oldX)
+          session.insert(id, XChange, 0f)
+          session.insert(id, XVelocity, 0f)
     rule preventMoveY(Fact):
       what:
-        (Player, X, x)
-        (Player, Y, y)
-        (Player, Width, width)
-        (Player, Height, height)
-        (Player, XChange, xChange, then = false)
-        (Player, YChange, yChange, then = false)
+        (id, X, x)
+        (id, Y, y)
+        (id, Width, width)
+        (id, Height, height)
+        (id, XChange, xChange, then = false)
+        (id, YChange, yChange, then = false)
       cond:
         yChange != 0
       then:
@@ -229,9 +263,9 @@ let rules =
           (vertX, vertY) = screenToIsometric(oldX, y)
           vertTile = tiles.touchingTile(wallLayer, vertX, vertY, width, height)
         if vertTile != (-1, -1):
-          session.insert(Player, Y, oldY)
-          session.insert(Player, YChange, 0f)
-          session.insert(Player, YVelocity, 0f)
+          session.insert(id, Y, oldY)
+          session.insert(id, YChange, 0f)
+          session.insert(id, YVelocity, 0f)
 
 var session = initSession(Fact)
 
@@ -319,7 +353,7 @@ proc init*(game: var Game) =
           orderedTiles.add((layerName: "walls", x: x, y: y))
 
   # connect rooms in the tiled map
-  let tilesToHit = connectRooms((0, 0))
+  let tilesToHit = rooms.connectRooms((0, 0))
   for tile in tilesToHit:
     if wallLayer[tile.x][tile.y] != -1:
       hitTile(tile.x, tile.y)
@@ -352,6 +386,31 @@ proc init*(game: var Game) =
   session.insert(Player, Direction, South)
   session.insert(Player, ImageName, "male_light")
 
+  var
+    nextId = Id.high.ord + 1
+    spawnPoints = rooms.getSpawnPoints()
+  spawnPoints.delete(spawnPoints.find((0, 0))) # exclude the player's room
+
+  # init enemies
+  let spawnCounts = [
+    (name: "ogre", count: 1),
+    (name: "elemental", count: 1)
+  ]
+  for (name, count) in spawnCounts:
+    for _ in 0 ..< count:
+      let
+        (x, y) = isometricToScreen(float(x) + 5, float(y) + 5)
+      session.insert(nextId, X, x)
+      session.insert(nextId, Y, y)
+      session.insert(nextId, Width, rawImages[name].maskSize / charTileSize)
+      session.insert(nextId, Height, rawImages[name].maskSize / charTileSize)
+      session.insert(nextId, XVelocity, 0f)
+      session.insert(nextId, YVelocity, 0f)
+      session.insert(nextId, ImageIndex, 0)
+      session.insert(nextId, Direction, South)
+      session.insert(nextId, ImageName, name)
+      nextId += 1
+
 proc addRenderProc(renderProcs: var OrderedTable[float, seq[proc (game: Game)]], y: float, fn: proc (game: Game)) =
   if not renderProcs.hasKey(y):
     renderProcs[y] = @[]
@@ -363,7 +422,14 @@ proc tick*(game: Game) =
   session.insert(Global, TotalTime, game.totalTime)
   let (windowWidth, windowHeight) = session.query(rules.getWindow)
   let (worldWidth, worldHeight) = session.query(rules.getWorld)
-  let player = session.query(rules.getPlayer)
+
+  # get the player and min/max positions to render
+  let
+    player = session.query(rules.getPlayer)
+    minY = player.y - (worldHeight / 2) - 1
+    maxY = player.y + (worldHeight / 2)
+    minX = player.x - (worldWidth / 2) - 1
+    maxX = player.x + (worldWidth / 2)
 
   # make the camera follow the player
   var camera = glm.mat3f(1)
@@ -377,22 +443,20 @@ proc tick*(game: Game) =
   for index in charIndexes:
     closureScope:
       let ch = session.get(rules.getCharacter, index)
-      addRenderProc(renderProcs, ch.y,
-        proc (game: Game) =
-          var image = charImages[ch.imageName][ch.imageIndex.ord][ch.direction.ord]
-          image.project(worldWidth, worldHeight)
-          image.invert(camera)
-          image.translate(ch.x, ch.y)
-          image.scale(ch.width, ch.height)
-          render(game, image)
-      )
+      if ch.y >= minY and ch.y <= maxY and ch.x >= minX and ch.x <= maxX:
+        addRenderProc(renderProcs, ch.y,
+          proc (game: Game) =
+            var image = charImages[ch.imageName][ch.imageIndex.ord][ch.direction.ord]
+            image.project(worldWidth, worldHeight)
+            image.invert(camera)
+            image.translate(ch.x, ch.y)
+            image.scale(ch.width, ch.height)
+            render(game, image)
+        )
 
   # add the tiled map
-  let
-    minY = player.y - (worldWidth / 2) - 1
-    maxY = player.y + (worldWidth / 2)
   for yPosition, entity in tiledMapEntities.pairs:
-    if yPosition < minY or yPosition > maxY: # don't render rows that are off the screen
+    if yPosition < minY or yPosition > maxY:
       continue
     closureScope:
       var

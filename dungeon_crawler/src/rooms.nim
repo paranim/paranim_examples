@@ -1,7 +1,5 @@
 import sets, random
 
-randomize()
-
 type
   XYTuple = tuple[x: int, y: int]
   Rooms = HashSet[XYTuple]
@@ -11,6 +9,11 @@ const
   cols = 4
   rows = 4
   size = 10
+
+proc getSpawnPoints*(): seq[XYTuple] =
+  for row in 0 ..< rows:
+    for col in 0 ..< cols:
+      result.add((row * size, col * size))
 
 proc getRandomNeighbor(rooms: Rooms, room: XYTuple): XYTuple =
   let (x, y) = room
