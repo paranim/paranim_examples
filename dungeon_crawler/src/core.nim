@@ -8,6 +8,7 @@ import sets, tables
 from math import `mod`
 from glm import nil
 import paranim/math as pmath
+import rooms
 
 type
   Game* = object of RootGame
@@ -74,6 +75,16 @@ var
 proc decelerate(velocity: float): float =
   let v = velocity * deceleration
   if abs(v) < damping: 0f else: v
+
+proc hitTile(x: int, y: int) =
+  # make a blank image
+  var e = initImageEntity([], 0, 0)
+  e.crop(0f, 0f, 0f, 0f)
+  # make the correct tile disappear
+  let tile = orderedTiles.find((layerName: "walls", x: x, y: y))
+  tiledMapEntity[tile] = e
+  # remove the tile from hit detection
+  wallLayer[x][y] = -1
 
 # http://clintbellanger.net/articles/isometric_math/
 
@@ -293,6 +304,12 @@ proc init*(game: var Game) =
             uncompiledTiledMap.add(image)
             orderedTiles.add((layerName: layerName, x: x, y: y))
     tiledMapEntity = compile(game, uncompiledTiledMap)
+
+  # connect rooms in the tiled map
+  let tilesToHit = connectRooms((0, 0))
+  for tile in tilesToHit:
+    if wallLayer[tile.x][tile.y] != -1:
+      hitTile(tile.x, tile.y)
 
   # init global values
   session.insert(Global, PressedKeys, initHashSet[int]())
