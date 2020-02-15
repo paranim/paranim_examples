@@ -388,7 +388,12 @@ proc tick*(game: Game) =
       )
 
   # add the tiled map
+  let
+    minY = player.y - (worldWidth / 2) - 1
+    maxY = player.y + (worldWidth / 2)
   for yPosition, entity in tiledMapEntities.pairs:
+    if yPosition < minY or yPosition > maxY: # don't render rows that are off the screen
+      continue
     closureScope:
       var
         y = yPosition
