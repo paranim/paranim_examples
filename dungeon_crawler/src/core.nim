@@ -5,6 +5,7 @@ import paranim/gl, paranim/gl/entities
 import pararules
 from tiles import nil
 import sets, tables
+from algorithm import sort
 from math import `mod`
 from glm import nil
 import paranim/math as pmath
@@ -22,7 +23,7 @@ type
     PressedKeys, MouseClick, MouseX, MouseY,
     X, Y, Width, Height,
     XVelocity, YVelocity, XChange, YChange,
-    ImageIndex, Direction,
+    ImageIndex, Direction, ImageName,
   DirectionName = enum
     West, NorthWest, North, NorthEast,
     East, SouthEast, South, SouthWest,
@@ -49,12 +50,13 @@ schema Fact(Id, Attr):
   YChange: float
   ImageIndex: int
   Direction: DirectionName
+  ImageName: string
 
 const
   charTileCount = 8 # number of rows and columns in a character's spritesheet
   charTileSize = 256 # the width and height of a given tile in a character's spritesheet
   verticalTiles = 7 # number of tiles that span the height of the screen
-  rawPlayerImage = staticRead("assets/characters/male_light.png")
+  rawImages = {"male_light": (maskSize: 128, data: staticRead("assets/characters/male_light.png"))}.toTable
   tiledMap = tiles.loadTiledMap("assets/level1.tmx")
   deceleration = 0.9
   damping = 0.5
@@ -66,11 +68,16 @@ const
                 (0, 1): South, (-1, 1): SouthWest}.toTable
 
 var
-  imageEntities: array[5, ImageEntity]
+  # the full tiled map
   tiledMapEntity: InstancedImageEntity
+  # the tiled map, split into slices according to the y axis
+  tiledMapEntities: OrderedTable[float, InstancedImageEntity]
+  # a list of tiles in the order they were added to tiledMapEntity
   orderedTiles: seq[tuple[layerName: string, x: int, y: int]]
+  # indicates which locations contain a wall tile
   wallLayer = tiledMap.layers["walls"]
-  playerImages: array[charTileCount, array[charTileCount, ImageEntity]]
+  # all the characters' images
+  charImages: Table[string, array[charTileCount, array[charTileCount, ImageEntity]]]
 
 proc decelerate(velocity: float): float =
   let v = velocity * deceleration
@@ -122,10 +129,15 @@ let rules =
       what:
         (Player, X, x)
         (Player, Y, y)
-        (Player, Width, width)
-        (Player, Height, height)
-        (Player, Direction, direction)
-        (Player, ImageIndex, imageIndex)
+    rule getCharacter(Fact):
+      what:
+        (id, X, x)
+        (id, Y, y)
+        (id, Width, width)
+        (id, Height, height)
+        (id, Direction, direction)
+        (id, ImageIndex, imageIndex)
+        (id, ImageName, imageName)
     # move the player's x,y position and animate
     rule movePlayer(Fact):
       what:
@@ -262,17 +274,19 @@ proc init*(game: var Game) =
   glEnable(GL_BLEND)
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-  # load image
-  var playerImage: ImageEntity
-  block:
+  # load character images
+  for (name, rawImage) in rawImages.pairs:
     var
       width, height, channels: int
       data: seq[uint8]
-    data = stbi.loadFromMemory(cast[seq[uint8]](rawPlayerImage), width, height, channels, stbi.RGBA)
-    let uncompiledImage = initImageEntity(data, width, height)
-    playerImage = compile(game, uncompiledImage)
+    data = stbi.loadFromMemory(cast[seq[uint8]](rawImage.data), width, height, channels, stbi.RGBA)
+    let
+      uncompiledImage = initImageEntity(data, width, height)
+      loadedImage = compile(game, uncompiledImage)
+    charImages[name] = createGrid(loadedImage, charTileCount, charTileSize, rawImage.maskSize)
 
   # load tiled map
+  var baseTiledMapEntity: InstancedImageEntity
   block:
     # load tileset image
     var
@@ -290,20 +304,19 @@ proc init*(game: var Game) =
         var imageEntity = uncompiledImage
         imageEntity.crop(float(x * tileWidth), float(y * tileHeight), float(tileWidth), float(tileHeight))
         images.add(imageEntity)
-    # create an instanced entity containing all the tiles
-    var uncompiledTiledMap = initInstancedEntity(uncompiledImage)
-    for layerName in ["walls"]:
-      let layerData = tiledMap.layers[layerName]
-      for x in 0 ..< layerData.len:
-        for y in 0 ..< layerData[x].len:
-          let imageId = layerData[x][y]
-          if imageId >= 0:
-            var image = images[imageId]
-            let (screenX, screenY) = isometricToScreen(float(x), float(y))
-            image.translate(screenX, screenY)
-            uncompiledTiledMap.add(image)
-            orderedTiles.add((layerName: layerName, x: x, y: y))
-    tiledMapEntity = compile(game, uncompiledTiledMap)
+    # a "base" entity that we will re-use later
+    baseTiledMapEntity = compile(game, initInstancedEntity(uncompiledImage))
+    # do a deepCopy so we don't modify the attributes of the base entity
+    tiledMapEntity = deepCopy(baseTiledMapEntity)
+    for x in 0 ..< wallLayer.len:
+      for y in 0 ..< wallLayer[x].len:
+        let imageId = wallLayer[x][y]
+        if imageId >= 0:
+          var image = images[imageId]
+          let (screenX, screenY) = isometricToScreen(float(x), float(y))
+          image.translate(screenX, screenY)
+          tiledMapEntity.add(image)
+          orderedTiles.add((layerName: "walls", x: x, y: y))
 
   # connect rooms in the tiled map
   let tilesToHit = connectRooms((0, 0))
@@ -311,21 +324,38 @@ proc init*(game: var Game) =
     if wallLayer[tile.x][tile.y] != -1:
       hitTile(tile.x, tile.y)
 
+  # create separate entities for each row of tiles
+  tiledMapEntities = initOrderedTable[float, InstancedImageEntity]()
+  for x in 0 ..< wallLayer.len:
+    for y in 0 ..< wallLayer[x].len:
+      let imageId = wallLayer[x][y]
+      if imageId >= 0:
+        let tile = orderedTiles.find((layerName: "walls", x: x, y: y))
+        let (_, screenY) = isometricToScreen(float(x), float(y))
+        if not tiledMapEntities.hasKey(screenY):
+          # do a deepCopy so we don't modify the attributes of the base entity
+          tiledMapEntities[screenY] = deepCopy(baseTiledMapEntity)
+        tiledMapEntities[screenY].add(tiledMapEntity[tile])
+
   # init global values
   session.insert(Global, PressedKeys, initHashSet[int]())
 
   # init player
-  let maskSize = 128
-  playerImages = createGrid(playerImage, charTileCount, charTileSize, maskSize)
   let (x, y) = isometricToScreen(5, 5)
   session.insert(Player, X, x)
   session.insert(Player, Y, y)
-  session.insert(Player, Width, maskSize / charTileSize)
-  session.insert(Player, Height, maskSize / charTileSize)
+  session.insert(Player, Width, rawImages["male_light"].maskSize / charTileSize)
+  session.insert(Player, Height, rawImages["male_light"].maskSize / charTileSize)
   session.insert(Player, XVelocity, 0f)
   session.insert(Player, YVelocity, 0f)
   session.insert(Player, ImageIndex, 0)
   session.insert(Player, Direction, South)
+  session.insert(Player, ImageName, "male_light")
+
+proc addRenderProc(renderProcs: var OrderedTable[float, seq[proc (game: Game)]], y: float, fn: proc (game: Game)) =
+  if not renderProcs.hasKey(y):
+    renderProcs[y] = @[]
+  renderProcs[y].add(fn)
 
 proc tick*(game: Game) =
   # update and query the session
@@ -335,26 +365,55 @@ proc tick*(game: Game) =
   let (worldWidth, worldHeight) = session.query(rules.getWorld)
   let player = session.query(rules.getPlayer)
 
+  # make the camera follow the player
+  var camera = glm.mat3f(1)
+  camera.translate(player.x - worldWidth / 2, player.y - worldHeight / 2)
+
+  # container to store render procs by y position
+  var renderProcs: OrderedTable[float, seq[proc (game: Game)]]
+
+  # add the characters
+  let charIndexes = session.findAll(rules.getCharacter)
+  for index in charIndexes:
+    closureScope:
+      let ch = session.get(rules.getCharacter, index)
+      addRenderProc(renderProcs, ch.y,
+        proc (game: Game) =
+          var image = charImages[ch.imageName][ch.imageIndex.ord][ch.direction.ord]
+          image.project(worldWidth, worldHeight)
+          image.invert(camera)
+          image.translate(ch.x, ch.y)
+          image.scale(ch.width, ch.height)
+          render(game, image)
+      )
+
+  # add the tiled map
+  for yPosition, entity in tiledMapEntities.pairs:
+    closureScope:
+      var
+        y = yPosition
+        e = entity
+      addRenderProc(renderProcs, y,
+        proc (game: Game) =
+          e.project(worldWidth, worldHeight)
+          e.invert(camera)
+          render(game, e)
+      )
+
+  # sort by y position
+  renderProcs.sort(proc (a, b: (float, seq[proc (game: Game)])): int =
+    if a[0] < b[0]: -1
+    elif a[0] > b[0]: 1
+    else: 0
+  )
+
   # clear the frame
   glClearColor(150/255, 150/255, 150/255, 1f)
   glClear(GL_COLOR_BUFFER_BIT)
   glViewport(0, 0, int32(windowWidth), int32(windowHeight))
 
-  # make the camera follow the player
-  var camera = glm.mat3f(1)
-  camera.translate(player.x - worldWidth / 2, player.y - worldHeight / 2)
-
-  # render the tiled map
-  var tiledMapEntity = tiledMapEntity
-  tiledMapEntity.project(worldWidth, worldHeight)
-  tiledMapEntity.invert(camera)
-  render(game, tiledMapEntity)
-
-  # render the player
-  var image = playerImages[player.imageIndex.ord][player.direction.ord]
-  image.project(worldWidth, worldHeight)
-  image.invert(camera)
-  image.translate(player.x, player.y)
-  image.scale(player.width, player.height)
-  render(game, image)
+  # render everything
+  for procs in renderProcs.values:
+    for p in procs:
+      p(game)
 
