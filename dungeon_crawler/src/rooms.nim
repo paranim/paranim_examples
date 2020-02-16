@@ -54,13 +54,14 @@ proc connectRooms(tiles: var Tiles, rooms: var Rooms, room: XYTuple): XYTuple =
 
   connectRoom(tiles, room, result)
 
+  while true:
+    result = connectRooms(tiles, rooms, result)
+    if result == (-1, -1):
+      return
+
 proc connectRooms*(room: XYTuple): Tiles =
   var rooms: Rooms
   for row in 0 ..< rows:
     for col in 0 ..< cols:
       rooms.incl((row, col))
-  var nextRoom = room
-  while true:
-    nextRoom = connectRooms(result, rooms, nextRoom)
-    if nextRoom == (-1, -1):
-      break
+  discard connectRooms(result, rooms, room)
