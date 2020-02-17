@@ -393,13 +393,14 @@ proc init*(game: var Game) =
 
   # init enemies
   let spawnCounts = [
-    (name: "ogre", count: 1),
-    (name: "elemental", count: 1)
+    (name: "ogre", count: 5),
+    (name: "elemental", count: 5)
   ]
   for (name, count) in spawnCounts:
     for _ in 0 ..< count:
       let
-        (x, y) = isometricToScreen(float(x) + 5, float(y) + 5)
+        point = spawnPoints[rand(spawnPoints.len-1)]
+        (x, y) = isometricToScreen(float(point.x) + 5, float(point.y) + 5)
       session.insert(nextId, X, x)
       session.insert(nextId, Y, y)
       session.insert(nextId, Width, rawImages[name].maskSize / charTileSize)
