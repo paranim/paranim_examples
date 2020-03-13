@@ -1,7 +1,7 @@
 To develop, [install Nim](https://nim-lang.org/install.html) and do:
 
 ```
-nimble run super_koalio
+nimble dev
 ```
 
 Or to make a release build:

@@ -1,10 +1,14 @@
 # Package
 
 version       = "0.1.0"
+author        = "oakes"
+description   = "FIXME"
+license       = "Public Domain"
 srcDir        = "src"
 bin           = @["super_koalio"]
 
-
+task dev, "Run dev version":
+  exec "nimble run super_koalio"
 
 # Dependencies
 
