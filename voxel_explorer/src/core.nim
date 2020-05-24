@@ -21,7 +21,7 @@ type
   Attr = enum
     DeltaTime, TotalTime, WindowWidth, WindowHeight,
     PressedKeys, MouseClick, MouseX, MouseY,
-    CameraX, CameraY,
+    CameraX, CameraY, CameraTargetX, CameraTargetY,
     UpdateVoxelProc,
   IntSet = HashSet[int]
   XYProc = proc (x: int, y: int)
@@ -37,6 +37,8 @@ schema Fact(Id, Attr):
   MouseY: float
   CameraX: float
   CameraY: float
+  CameraTargetX: float
+  CameraTargetY: float
   UpdateVoxelProc: XYProc
 
 const
@@ -50,7 +52,6 @@ const
                 staticRead("assets/png/stone/Gray_granite_pxr128.png"),
                 staticRead("assets/png/ground/Beach_sand_pxr128.png"),
               ]
-  cameraStep = 50f
 
 var
   faceUnit: GLint
@@ -104,23 +105,45 @@ let rules =
       what:
         (Global, CameraX, x)
         (Global, CameraY, y)
-    # move camera
-    rule moveCamera(Fact):
+    # move camera target
+    rule moveCameraTarget(Fact):
       what:
         (Global, UpdateVoxelProc, updateVoxels)
-        (Global, CameraX, x, then = false)
-        (Global, CameraY, y, then = false)
+        (Global, CameraTargetX, x, then = false)
+        (Global, CameraTargetY, y, then = false)
         (Global, PressedKeys, keys)
       then:
         updateVoxels(x.int, y.int)
+        const cameraStep = 50.0
         if keys.contains(GLFWKey.Up.ord) or keys.contains(GLFWKey.W.ord):
-          session.insert(Global, CameraY, y + cameraStep)
+          session.insert(Global, CameraTargetY, y + cameraStep)
         elif keys.contains(GLFWKey.Down.ord) or keys.contains(GLFWKey.S.ord):
-          session.insert(Global, CameraY, y - cameraStep)
+          session.insert(Global, CameraTargetY, y - cameraStep)
         if keys.contains(GLFWKey.Right.ord) or keys.contains(GLFWKey.D.ord):
-          session.insert(Global, CameraX, x + cameraStep)
+          session.insert(Global, CameraTargetX, x + cameraStep)
         elif keys.contains(GLFWKey.Left.ord) or keys.contains(GLFWKey.A.ord):
-          session.insert(Global, CameraX, x - cameraStep)
+          session.insert(Global, CameraTargetX, x - cameraStep)
+    # move camera (this causes the camera to move smoothly)
+    rule moveCamera(Fact):
+      what:
+        (Global, DeltaTime, dt)
+        (Global, CameraTargetX, tx)
+        (Global, CameraTargetY, ty)
+        (Global, CameraX, x, then = false)
+        (Global, CameraY, y, then = false)
+      cond:
+        tx != x or ty != y
+      then:
+        const
+          speed = 10.0
+          minDiff = 0.01
+        let
+          xDiff = tx - x
+          yDiff = ty - y
+          newX = if abs(xDiff) < minDiff: tx else: x + (xDiff * dt * speed)
+          newY = if abs(yDiff) < minDiff: ty else: y + (yDiff * dt * speed)
+        session.insert(Global, CameraX, newX)
+        session.insert(Global, CameraY, newY)
 
 var session = initSession(Fact)
 
@@ -184,6 +207,8 @@ proc init*(game: var Game, updateVoxels: proc (x: int, y: int)) =
   session.insert(Global, PressedKeys, initHashSet[int]())
   session.insert(Global, CameraX, 0f)
   session.insert(Global, CameraY, 0f)
+  session.insert(Global, CameraTargetX, 0f)
+  session.insert(Global, CameraTargetY, 0f)
   session.insert(Global, UpdateVoxelProc, updateVoxels)
 
 func degToRad(angle: float): float =
