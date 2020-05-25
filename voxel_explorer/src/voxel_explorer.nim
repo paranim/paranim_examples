@@ -2,12 +2,12 @@ import nimgl/glfw
 import core
 from mesh_builder import nil
 
-when not defined(release):
+when defined(paravim):
   from paravim import nil
   var focusOnGame = true
 
 proc keyCallback(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32) {.cdecl.} =
-  when not defined(release):
+  when defined(paravim):
     if action == GLFW_PRESS and key == GLFWKey.Escape and paravim.isNormalMode():
       focusOnGame = not focusOnGame
       return
@@ -21,13 +21,13 @@ proc keyCallback(window: GLFWWindow, key: int32, scancode: int32, action: int32,
     onKeyRelease(key)
 
 proc charCallback(window: GLFWWindow, codepoint: uint32) {.cdecl.} =
-  when not defined(release):
+  when defined(paravim):
     if not focusOnGame:
       paravim.charCallback(window, codepoint)
       return
 
 proc mouseButtonCallback(window: GLFWWindow, button: int32, action: int32, mods: int32) {.cdecl.} =
-  when not defined(release):
+  when defined(paravim):
     if not focusOnGame:
       paravim.mouseButtonCallback(window, button, action, mods)
       return
@@ -35,14 +35,14 @@ proc mouseButtonCallback(window: GLFWWindow, button: int32, action: int32, mods:
     onMouseClick(button)
 
 proc cursorPosCallback(window: GLFWWindow, xpos: float64, ypos: float64) {.cdecl.} =
-  when not defined(release):
+  when defined(paravim):
     if not focusOnGame:
       paravim.cursorPosCallback(window, xpos, ypos)
       return
   onMouseMove(xpos, ypos)
 
 proc frameSizeCallback(window: GLFWWindow, width: int32, height: int32) {.cdecl.} =
-  when not defined(release):
+  when defined(paravim):
     paravim.frameSizeCallback(window, width, height)
   onWindowResize(width, height)
 
@@ -73,7 +73,7 @@ when isMainModule:
   w.frameSizeCallback(width, height)
 
   var game = Game()
-  when not defined(release):
+  when defined(paravim):
     paravim.init(game, w)
   game.init(proc (x: int, y: int) =
     mesh_builder.requestMeshGeneration(x, y)
@@ -87,7 +87,7 @@ when isMainModule:
     game.deltaTime = ts - game.totalTime
     game.totalTime = ts
     game.tick()
-    when not defined(release):
+    when defined(paravim):
       if not focusOnGame:
         paravim.tick(game)
     w.swapBuffers()
