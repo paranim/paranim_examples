@@ -58,37 +58,15 @@ var
   voxelUnit: GLint
   voxelEntities: seq[VoxelEntity]
 
-proc quadsToTris[T](dataLen: int, vertexSize: int): seq[T] =
-  var i = 0
-  while i < dataLen:
-    result.add([T(i+0), T(i+1), T(i+2), T(i+0), T(i+2), T(i+3)])
-    i += vertexSize * 4
-
 proc updateVoxelEntities*(game: var Game) =
   for mesh in mesh_builder.meshes.mvalues:
     if mesh.state != mesh_builder.Generated or mesh.mc.num_quads == 0:
       continue
-    var e = block:
-      var e = voxels.initVoxelEntity(faceUnit, voxelUnit)
-      new(e.attributes.attr_vertex.data)
-      e.attributes.attr_vertex.disable = false
-      let vbuf = cast[ptr UncheckedArray[uint32]](mesh.vertex_build_buffer)
-      for i in 0 ..< int(mesh.mc.vbuf_size / 4):
-        e.attributes.attr_vertex.data[].add(vbuf[i])
-      new(e.attributes.texture.data)
-      e.attributes.texture.disable = false
-      let fbuf = cast[ptr UncheckedArray[uint8]](mesh.face_buffer)
-      for i in 0 ..< mesh.mc.fbuf_size:
-        e.attributes.texture.data[].add(fbuf[i])
-      new(e.attributes.indexes.data)
-      e.attributes.indexes.disable = false
-      e.attributes.indexes.data[].add(quadsToTris[GLuint](e.attributes.attr_vertex.data[].len, 1))
-      compile(game, e)
+    var e = compile(game, voxels.initVoxelEntity(mesh, faceUnit, voxelUnit))
     mesh.mc.vbuf = e.attributes.attr_vertex.buffer
     mesh.mc.fbuf = e.attributes.texture.buffer
     mesh.mc.fbuf_tex = e.attributes.texture.textureNum
     mesh.state = mesh_builder.Rendered
-    e.mesh = mesh
     voxelEntities.add(e)
 
 let rules =
@@ -251,9 +229,6 @@ proc tick*(game: Game) =
     e.uniforms.model_view.disable = false
     e.uniforms.model_view.data.project(degToRad(60), float(windowWidth) / float(windowHeight), 3000f, 1f/16f)
     e.uniforms.model_view.data.invert(camera)
-    e.uniforms.transform.disable = false
-    for row in e.mesh.mc.transform:
-      e.uniforms.transform.data.add(vec3(row[0], row[1], row[2]))
     render(game, e)
 
   # for paravim
