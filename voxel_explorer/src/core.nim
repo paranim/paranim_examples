@@ -22,9 +22,7 @@ type
     DeltaTime, TotalTime, WindowWidth, WindowHeight,
     PressedKeys, MouseClick, MouseX, MouseY,
     CameraX, CameraY, CameraTargetX, CameraTargetY,
-    UpdateVoxelProc,
   IntSet = HashSet[int]
-  XYProc = proc (x: int, y: int)
 
 schema Fact(Id, Attr):
   DeltaTime: float
@@ -39,7 +37,6 @@ schema Fact(Id, Attr):
   CameraY: float
   CameraTargetX: float
   CameraTargetY: float
-  UpdateVoxelProc: XYProc
 
 const
   rawImages = [
@@ -57,6 +54,7 @@ var
   faceUnit: GLint
   voxelUnit: GLint
   voxelEntities: seq[VoxelEntity]
+  updateVoxels*: proc (x: int, y: int)
 
 proc updateVoxelEntities*(game: var Game) =
   for mesh in mesh_builder.meshes.mvalues:
@@ -86,7 +84,6 @@ let rules =
     # move camera target
     rule moveCameraTarget(Fact):
       what:
-        (Global, UpdateVoxelProc, updateVoxels)
         (Global, CameraTargetX, x, then = false)
         (Global, CameraTargetY, y, then = false)
         (Global, PressedKeys, keys)
@@ -151,7 +148,7 @@ proc onWindowResize*(width: int, height: int) =
   session.insert(Global, WindowWidth, width)
   session.insert(Global, WindowHeight, height)
 
-proc init*(game: var Game, updateVoxels: proc (x: int, y: int)) =
+proc init*(game: var Game) =
   doAssert glInit()
 
   faceUnit = game.texCount.GLint
@@ -187,7 +184,6 @@ proc init*(game: var Game, updateVoxels: proc (x: int, y: int)) =
   session.insert(Global, CameraY, 0f)
   session.insert(Global, CameraTargetX, 0f)
   session.insert(Global, CameraTargetY, 0f)
-  session.insert(Global, UpdateVoxelProc, updateVoxels)
 
 func degToRad(angle: float): float =
   (angle * math.PI) / 180.0

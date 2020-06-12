@@ -73,12 +73,14 @@ when isMainModule:
   w.frameSizeCallback(width, height)
 
   var game = Game()
+  updateVoxels =
+    proc (x: int, y: int) =
+      mesh_builder.requestMeshGeneration(x, y)
+      updateVoxelEntities(game)
+
   when defined(paravim):
     paravim.init(game, w)
-  game.init(proc (x: int, y: int) =
-    mesh_builder.requestMeshGeneration(x, y)
-    updateVoxelEntities(game)
-  )
+  game.init()
 
   game.totalTime = glfwGetTime()
 
