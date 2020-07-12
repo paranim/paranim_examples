@@ -56,16 +56,13 @@ var
   voxelUnit: GLint
   voxelEntities: seq[VoxelEntity]
 
-proc updateVoxelEntities() =
-  for mesh in mesh_builder.meshes.mvalues:
-    if mesh.state != mesh_builder.Generated or mesh.mc.num_quads == 0:
-      continue
-    var uncompiledEntity = voxels.initVoxelEntity(faceUnit, voxelUnit)
-    voxels.setMesh(uncompiledEntity, mesh)
-    var e = compile(game, uncompiledEntity)
-    mesh.state = mesh_builder.Rendered
-    mesh_builder.free_mesh(mesh.addr)
-    voxelEntities.add(e)
+proc addVoxelEntities(meshes: seq[mesh_builder.Mesh]) =
+  for mesh in meshes:
+    if mesh.mc.num_quads > 0:
+      var uncompiledEntity = voxels.initVoxelEntity(faceUnit, voxelUnit)
+      voxels.setMesh(uncompiledEntity, mesh)
+      voxelEntities.add(compile(game, uncompiledEntity))
+    mesh_builder.free_mesh(mesh.unsafeAddr)
 
 let rules =
   ruleset:
@@ -88,8 +85,7 @@ let rules =
         (Global, CameraTargetY, y, then = false)
         (Global, PressedKeys, keys)
       then:
-        mesh_builder.requestMeshGeneration(x.int, y.int)
-        updateVoxelEntities()
+        addVoxelEntities(mesh_builder.generateMeshes(x.int, y.int))
         const cameraStep = 50.0
         if keys.contains(GLFWKey.Up.ord) or keys.contains(GLFWKey.W.ord):
           session.insert(Global, CameraTargetY, y + cameraStep)

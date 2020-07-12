@@ -100,7 +100,6 @@ typedef struct
 typedef struct
 {
    int x,y;
-   int state;
 
    mesh_chunk *mc;
    uint8 *vertex_build_buffer; // malloc/free
@@ -447,8 +446,6 @@ void build_mesh(mesh *rm, unsigned char geom_for_blocktype[256], unsigned char t
          rm->chunks.chunk[k][j] = generate_chunk(cx, cy);
       }
    }
-
-   rm->state = 1;
 
    stbvox_mesh_maker mm;
    mesh_chunk *mc;

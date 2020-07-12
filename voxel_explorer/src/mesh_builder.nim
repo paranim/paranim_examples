@@ -1,6 +1,6 @@
 import nimgl/opengl
 import stb_voxel_render, u_noise
-import tables
+import sets
 
 {.compile: "mesh_builder.c".}
 
@@ -9,11 +9,6 @@ const
   chunkSize = 64
   numZSegments = 16
   zSegmentSize = 16
-
-const
-  Invalid* = 0
-  Generated* = 1
-  Rendered* = 2
 
 type
   BlockType = enum
@@ -38,7 +33,6 @@ type
     num_quads*: cint
   Mesh* {.bycopy.} = object
     x, y: cint
-    state*: cint
     mc*: ptr MeshChunk
     vertex_build_buffer*, face_buffer*: pointer
     chunks: ChunkSet
@@ -49,7 +43,7 @@ type
     segment_lighting: array[66, array[66, array[18, uint8]]]
 
 var
-  meshes*: Table[tuple[x: int, y: int], Mesh]
+  builtMeshes: HashSet[tuple[x: int, y: int]]
   geomForBlocktype: array[256, cuchar]
   texForBlocktype: array[256, array[6, cuchar]]
 
@@ -75,7 +69,7 @@ proc initMeshBuilding(geomForBlocktype: var array[256, cuchar], texForBlocktype:
   setBlocktypeTex(texForBlocktype, Stone, 6)
   setBlocktypeTex(texForBlocktype, Sand, 7)
 
-proc requestMeshGeneration*(camX: int, camY: int) =
+proc generateMeshes*(camX: int, camY: int): seq[Mesh] =
   let
     qchunkX = world_to_chunk(camX.cint)
     qchunkY = world_to_chunk(camY.cint)
@@ -88,7 +82,7 @@ proc requestMeshGeneration*(camX: int, camY: int) =
         cx = qchunkX + i
         cy = qchunkY + j
         t = (cx, cy)
-      if not meshes.contains(t):
+      if not builtMeshes.contains(t):
         let
           wx = cx * chunkSize
           wy = cy * chunkSize
@@ -98,7 +92,8 @@ proc requestMeshGeneration*(camX: int, camY: int) =
         m.x = wx.cint
         m.y = wy.cint
         build_mesh(m.addr, geomForBlocktype, texForBlocktype)
-        meshes[t] = m
+        result.add(m)
+        builtMeshes.incl(t)
 
 proc init*() =
   initMeshBuilding(geomForBlocktype, texForBlocktype)
