@@ -59,6 +59,8 @@ proc build_mesh(rm: ptr Mesh, geomForBlocktype: array[256, cuchar], texForBlockt
 
 proc world_to_chunk(n: cint): cint {.cdecl importc: "world_to_chunk".}
 
+proc free_mesh*(mesh: ptr Mesh) {.cdecl importc: "free_mesh".}
+
 proc generateMesh(mesh: var Mesh, geomForBlocktype: var array[256, cuchar], texForBlocktype: var array[256, array[6, cuchar]]) =
   for k in 0 ..< 4:
     for j in 0 ..< 4:

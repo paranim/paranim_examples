@@ -474,3 +474,16 @@ void build_mesh(mesh *rm, unsigned char geom_for_blocktype[256], unsigned char t
 
    rm->mc = mc;
 }
+
+void free_mesh(mesh *rm)
+{
+   free(rm->vertex_build_buffer);
+   free(rm->face_buffer);
+   free(rm->mc);
+
+   for (int k=0; k < 4; ++k) {
+      for (int j=0; j < 4; ++j) {
+         free(rm->chunks.chunk[k][j]);
+      }
+   }
+}

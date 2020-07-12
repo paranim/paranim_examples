@@ -63,10 +63,8 @@ proc updateVoxelEntities() =
     var uncompiledEntity = voxels.initVoxelEntity(faceUnit, voxelUnit)
     voxels.setMesh(uncompiledEntity, mesh)
     var e = compile(game, uncompiledEntity)
-    mesh.mc.vbuf = e.attributes.attr_vertex.buffer
-    mesh.mc.fbuf = e.attributes.texture.buffer
-    mesh.mc.fbuf_tex = e.attributes.texture.textureNum
     mesh.state = mesh_builder.Rendered
+    mesh_builder.free_mesh(mesh.addr)
     voxelEntities.add(e)
 
 let rules =
