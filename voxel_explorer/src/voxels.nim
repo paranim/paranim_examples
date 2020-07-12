@@ -27,34 +27,44 @@ proc quadsToTris[T](dataLen: int, vertexSize: int): seq[T] =
     result.add([T(i+0), T(i+1), T(i+2), T(i+0), T(i+2), T(i+3)])
     i += vertexSize * 4
 
-proc initVoxelEntity*(mesh: mesh_builder.Mesh, faceUnit: GLint, voxelUnit: GLint): UncompiledVoxelEntity =
-  result.vertexSource = $ getVertexShader()
-  result.fragmentSource = $ getFragmentShader()
+proc setMesh*[T](entity: var T, mesh: mesh_builder.Mesh) =
   # set attr_vertex
-  result.attributes.attr_vertex = Attribute[GLuint](size: 1, iter: 1)
-  new(result.attributes.attr_vertex.data)
+  entity.attributes.attr_vertex.disable = false
   let vbuf = cast[ptr UncheckedArray[uint32]](mesh.vertex_build_buffer)
   for i in 0 ..< int(mesh.mc.vbuf_size / 4):
-    result.attributes.attr_vertex.data[].add(vbuf[i])
+    entity.attributes.attr_vertex.data[].add(vbuf[i])
   # set texture
-  result.attributes.texture = TextureBuffer[GLubyte](unit: faceUnit, internalFmt: GL_RGBA8UI)
-  new(result.attributes.texture.data)
+  entity.attributes.texture.disable = false
   let fbuf = cast[ptr UncheckedArray[uint8]](mesh.face_buffer)
   for i in 0 ..< mesh.mc.fbuf_size:
-    result.attributes.texture.data[].add(fbuf[i])
+    entity.attributes.texture.data[].add(fbuf[i])
   # set indexes (this allows us to draw with GL_TRIANGLES instead of the obsolete GL_QUADS)
-  result.attributes.indexes = IndexBuffer[GLuint]()
+  entity.attributes.indexes.disable = false
+  entity.attributes.indexes.data[].add(quadsToTris[GLuint](entity.attributes.attr_vertex.data[].len, 1))
+  # set transform uniform
+  entity.uniforms.transform.disable = false
+  entity.uniforms.transform.data = block:
+    var vecs = newSeq[Vec3[GLfloat]]()
+    for row in mesh.mc.transform:
+      vecs.add(vec3(row[0], row[1], row[2]))
+    vecs
+
+proc initVoxelEntity*(faceUnit: GLint, voxelUnit: GLint): UncompiledVoxelEntity =
+  result.vertexSource = $ getVertexShader()
+  result.fragmentSource = $ getFragmentShader()
+  # attr_vertex
+  result.attributes.attr_vertex = Attribute[GLuint](disable: true, size: 1, iter: 1)
+  new(result.attributes.attr_vertex.data)
+  # texture
+  result.attributes.texture = TextureBuffer[GLubyte](disable: true, unit: faceUnit, internalFmt: GL_RGBA8UI)
+  new(result.attributes.texture.data)
+  # indexes
+  result.attributes.indexes = IndexBuffer[GLuint](disable: true)
   new(result.attributes.indexes.data)
-  result.attributes.indexes.data[].add(quadsToTris[GLuint](result.attributes.attr_vertex.data[].len, 1))
   # set uniforms
   result.uniforms = (
     facearray: Uniform[GLint](data: faceUnit),
-    transform: Uniform[seq[Vec3[GLfloat]]](data: block:
-      var vecs = newSeq[Vec3[GLfloat]]()
-      for row in mesh.mc.transform:
-        vecs.add(vec3(row[0], row[1], row[2]))
-      vecs
-    ),
+    transform: Uniform[seq[Vec3[GLfloat]]](disable: true),
     normal_table: Uniform[seq[Vec3[GLfloat]]](data: block:
       var vecs = newSeq[Vec3[GLfloat]](32)
       var info: stbvox_uniform_info

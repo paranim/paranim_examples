@@ -51,16 +51,18 @@ const
               ]
 
 var
+  game* = Game()
   faceUnit: GLint
   voxelUnit: GLint
   voxelEntities: seq[VoxelEntity]
-  updateVoxels*: proc (x: int, y: int)
 
-proc updateVoxelEntities*(game: var Game) =
+proc updateVoxelEntities() =
   for mesh in mesh_builder.meshes.mvalues:
     if mesh.state != mesh_builder.Generated or mesh.mc.num_quads == 0:
       continue
-    var e = compile(game, voxels.initVoxelEntity(mesh, faceUnit, voxelUnit))
+    var uncompiledEntity = voxels.initVoxelEntity(faceUnit, voxelUnit)
+    voxels.setMesh(uncompiledEntity, mesh)
+    var e = compile(game, uncompiledEntity)
     mesh.mc.vbuf = e.attributes.attr_vertex.buffer
     mesh.mc.fbuf = e.attributes.texture.buffer
     mesh.mc.fbuf_tex = e.attributes.texture.textureNum
@@ -88,7 +90,8 @@ let rules =
         (Global, CameraTargetY, y, then = false)
         (Global, PressedKeys, keys)
       then:
-        updateVoxels(x.int, y.int)
+        mesh_builder.requestMeshGeneration(x.int, y.int)
+        updateVoxelEntities()
         const cameraStep = 50.0
         if keys.contains(GLFWKey.Up.ord) or keys.contains(GLFWKey.W.ord):
           session.insert(Global, CameraTargetY, y + cameraStep)
