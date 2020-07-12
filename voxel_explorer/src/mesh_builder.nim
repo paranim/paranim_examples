@@ -53,23 +53,11 @@ var
   geomForBlocktype: array[256, cuchar]
   texForBlocktype: array[256, array[6, cuchar]]
 
-proc generate_chunk(x: cint; y: cint): ptr GenChunk {.cdecl, importc: "generate_chunk".}
-
 proc build_mesh(rm: ptr Mesh, geomForBlocktype: array[256, cuchar], texForBlocktype: array[256, array[6, cuchar]]) {.cdecl, importc: "build_mesh".}
 
 proc world_to_chunk(n: cint): cint {.cdecl importc: "world_to_chunk".}
 
 proc free_mesh*(mesh: ptr Mesh) {.cdecl importc: "free_mesh".}
-
-proc generateMesh(mesh: var Mesh, geomForBlocktype: var array[256, cuchar], texForBlocktype: var array[256, array[6, cuchar]]) =
-  for k in 0 ..< 4:
-    for j in 0 ..< 4:
-      let
-        cx = mesh.x + (j - 1) * chunkSize
-        cy = mesh.y + (k - 1) * chunkSize
-      mesh.chunks.chunk[k][j] = generate_chunk(cx.cint, cy.cint)
-  mesh.state = Generated
-  build_mesh(mesh.addr, geomForBlocktype, texForBlocktype)
 
 proc setBlocktypeTex(texForBlocktype: var array[256, array[6, cuchar]], bt: BlockType, tex: int) =
   for i in 0 ..< 6:
@@ -109,7 +97,7 @@ proc requestMeshGeneration*(camX: int, camY: int) =
         var m: Mesh
         m.x = wx.cint
         m.y = wy.cint
-        generateMesh(m, geomForBlocktype, texForBlocktype)
+        build_mesh(m.addr, geomForBlocktype, texForBlocktype)
         meshes[t] = m
 
 proc init*() =

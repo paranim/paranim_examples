@@ -440,6 +440,16 @@ void compute_mesh_sizes(mesh_chunk *mc)
 
 void build_mesh(mesh *rm, unsigned char geom_for_blocktype[256], unsigned char tex1_for_blocktype[256][6])
 {
+   for (int k=0; k < 4; ++k) {
+      for (int j=0; j < 4; ++j) {
+         int cx = rm->x + (j-1) * CHUNK_SIZE;
+         int cy = rm->y + (k-1) * CHUNK_SIZE;
+         rm->chunks.chunk[k][j] = generate_chunk(cx, cy);
+      }
+   }
+
+   rm->state = 1;
+
    stbvox_mesh_maker mm;
    mesh_chunk *mc;
    vec3i wc = { rm->x, rm->y, 0 };
