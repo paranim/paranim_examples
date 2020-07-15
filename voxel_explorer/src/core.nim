@@ -196,8 +196,8 @@ proc tick*(game: Game) =
   glDisable(GL_TEXTURE_2D)
   glDisable(GL_LIGHTING)
   glEnable(GL_DEPTH_TEST)
-  glDepthFunc(GL_GREATER)
-  glClearDepth(0)
+  glDepthFunc(GL_LESS)
+  glClearDepth(1)
   glDepthMask(true)
   glDisable(GL_SCISSOR_TEST)
   glClearColor(0.6f, 0.7f, 0.9f, 0.0f)
@@ -220,7 +220,7 @@ proc tick*(game: Game) =
   for voxelEntity in voxelEntities:
     var e = voxelEntity
     e.uniforms.model_view.disable = false
-    e.uniforms.model_view.data.project(degToRad(60), float(windowWidth) / float(windowHeight), 3000f, 1f/16f)
+    e.uniforms.model_view.data.project(degToRad(60), float(windowWidth) / float(windowHeight), 1f/16f, 3000f)
     e.uniforms.model_view.data.invert(camera)
     render(game, e)
 
