@@ -340,8 +340,8 @@ proc init*(game: var Game) =
         images.add(imageEntity)
     # a "base" entity that we will re-use later
     baseTiledMapEntity = compile(game, initInstancedEntity(uncompiledImage))
-    # do a deepCopy so we don't modify the attributes of the base entity
-    tiledMapEntity = deepCopy(baseTiledMapEntity)
+    # do a copy so we don't modify the attributes of the base entity
+    tiledMapEntity = gl.copy(baseTiledMapEntity)
     for x in 0 ..< wallLayer.len:
       for y in 0 ..< wallLayer[x].len:
         let imageId = wallLayer[x][y]
@@ -367,8 +367,8 @@ proc init*(game: var Game) =
         let tile = orderedTiles.find((layerName: "walls", x: x, y: y))
         let (_, screenY) = isometricToScreen(float(x), float(y))
         if not tiledMapEntities.hasKey(screenY):
-          # do a deepCopy so we don't modify the attributes of the base entity
-          tiledMapEntities[screenY] = deepCopy(baseTiledMapEntity)
+          # do a copy so we don't modify the attributes of the base entity
+          tiledMapEntities[screenY] = gl.copy(baseTiledMapEntity)
         tiledMapEntities[screenY].add(tiledMapEntity[tile])
 
   # init global values
