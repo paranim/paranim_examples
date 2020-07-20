@@ -442,8 +442,9 @@ proc tick*(game: Game) =
   # add the characters
   let charIndexes = session.findAll(rules.getCharacter)
   for index in charIndexes:
+    let i = index
     closureScope:
-      let ch = session.get(rules.getCharacter, index)
+      let ch = session.get(rules.getCharacter, i)
       if ch.y >= minY and ch.y <= maxY and ch.x >= minX and ch.x <= maxX:
         addRenderProc(renderProcs, ch.y,
           proc (game: Game) =
