@@ -25,7 +25,7 @@ type
     WorldWidth, WorldHeight,
     PressedKeys, MouseClick, MouseX, MouseY,
     X, Y, Width, Height,
-    XVelocity, YVelocity, XChange, YChange,
+    XVelocity, YVelocity, MaxVelocity, XChange, YChange,
     ImageIndex, Direction, ImageName,
   DirectionName = enum
     West, NorthWest, North, NorthEast,
@@ -49,6 +49,7 @@ schema Fact(Id, Attr):
   Height: float
   XVelocity: float
   YVelocity: float
+  MaxVelocity: float
   XChange: float
   YChange: float
   ImageIndex: int
@@ -65,13 +66,14 @@ const
   tiledMap = tiles.loadTiledMap("assets/level1.tmx")
   deceleration = 0.9
   damping = 0.5
-  maxVelocity = 4f
-  maxEnemyVelocity = maxVelocity / 2
+  maxPlayerVelocity = 4f
   animationSecs = 0.2
   velocities = {(-1, 0): West, (-1, -1): NorthWest,
                 (0, -1): North, (1, -1): NorthEast,
                 (1, 0): East, (1, 1): SouthEast,
                 (0, 1): South, (-1, 1): SouthWest}.toTable
+  minAggroDistance = 0.5
+  maxAggroDistance = 2.0
 
 var
   # the full tiled map
@@ -105,13 +107,16 @@ const
   tileWidthHalf = 1 / 2
   tileHeightHalf = 1 / 4
 
-proc isometricToScreen(x: float, y: float): tuple[x: float, y: float] =
+func isometricToScreen(x: float, y: float): tuple[x: float, y: float] =
   (x: (x - y) * tileWidthHalf,
    y: (x + y) * tileHeightHalf)
 
-proc screenToIsometric(x: float, y: float): tuple[x: float, y: float] =
+func screenToIsometric(x: float, y: float): tuple[x: float, y: float] =
   (x: ((x / tileWidthHalf) + (y / tileHeightHalf)) / 2,
    y: ((y / tileHeightHalf) - (x / tileWidthHalf)) / 2)
+
+func calcDistance(x1: float, y1: float, x2: float, y2: float): float =
+  abs(math.sqrt(math.pow(x1 - x2, 2) + math.pow(y1 - y2, 2)))
 
 let rules =
   ruleset:
@@ -153,6 +158,7 @@ let rules =
         (Player, Y, y, then = false)
         (Player, XVelocity, xv, then = false)
         (Player, YVelocity, yv, then = false)
+        (Player, MaxVelocity, maxVelocity)
       then:
         xv =
           if keys.contains(int(GLFWKey.Left)):
@@ -183,19 +189,35 @@ let rules =
         (id, Y, y, then = false)
         (id, XVelocity, xv, then = false)
         (id, YVelocity, yv, then = false)
+        (id, MaxVelocity, maxVelocity)
+        (Player, X, px)
+        (Player, Y, py)
       cond:
         id != Player.ord
       then:
-        xv =
-          if xv == 0:
-            float(rand(2) - 1) * maxEnemyVelocity
-          else:
-            xv
-        yv =
-          if yv == 0:
-            float(rand(2) - 1) * maxEnemyVelocity
-          else:
-            yv
+        let distance = calcDistance(x, y, px, py)
+        if distance > minAggroDistance and distance < maxAggroDistance:
+          xv =
+            if px < x:
+              -1 * maxVelocity
+            else:
+              maxVelocity
+          yv =
+            if py < y:
+              -1 * maxVelocity
+            else:
+              maxVelocity
+        else:
+          xv =
+            if xv == 0:
+              float(rand(2) - 1) * maxVelocity
+            else:
+              xv
+          yv =
+            if yv == 0:
+              float(rand(2) - 1) * maxVelocity
+            else:
+              yv
         let xChange = xv * dt
         let yChange = yv * dt
         session.insert(id, XVelocity, decelerate(xv))
@@ -267,7 +289,7 @@ let rules =
           session.insert(id, YChange, 0f)
           session.insert(id, YVelocity, 0f)
 
-var session = initSession(Fact)
+var session = initSession(Fact, autoFire = false)
 
 for r in rules.fields:
   session.add(r)
@@ -382,6 +404,7 @@ proc init*(game: var Game) =
   session.insert(Player, Height, rawImages["male_light"].maskSize / charTileSize)
   session.insert(Player, XVelocity, 0f)
   session.insert(Player, YVelocity, 0f)
+  session.insert(Player, MaxVelocity, maxPlayerVelocity)
   session.insert(Player, ImageIndex, 0)
   session.insert(Player, Direction, South)
   session.insert(Player, ImageName, "male_light")
@@ -393,10 +416,10 @@ proc init*(game: var Game) =
 
   # init enemies
   let spawnCounts = [
-    (name: "ogre", count: 5),
-    (name: "elemental", count: 5)
+    (name: "ogre", count: 5, velocity: maxPlayerVelocity / 4),
+    (name: "elemental", count: 5, velocity: maxPlayerVelocity / 3)
   ]
-  for (name, count) in spawnCounts:
+  for (name, count, velocity) in spawnCounts:
     for _ in 0 ..< count:
       let
         point = spawnPoints[rand(spawnPoints.len-1)]
@@ -407,6 +430,7 @@ proc init*(game: var Game) =
       session.insert(nextId, Height, rawImages[name].maskSize / charTileSize)
       session.insert(nextId, XVelocity, 0f)
       session.insert(nextId, YVelocity, 0f)
+      session.insert(nextId, MaxVelocity, velocity)
       session.insert(nextId, ImageIndex, 0)
       session.insert(nextId, Direction, South)
       session.insert(nextId, ImageName, name)
@@ -421,6 +445,7 @@ proc tick*(game: Game) =
   # update and query the session
   session.insert(Global, DeltaTime, game.deltaTime)
   session.insert(Global, TotalTime, game.totalTime)
+  session.fireRules()
   let (windowWidth, windowHeight) = session.query(rules.getWindow)
   let (worldWidth, worldHeight) = session.query(rules.getWorld)
 
