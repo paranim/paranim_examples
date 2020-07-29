@@ -84,8 +84,18 @@ when isMainModule:
 
   game.totalTime = glfwGetTime()
 
+  when not defined(release):
+    var prevTime = glfwGetTime()
+    var frameCount = 0
+
   while not w.windowShouldClose:
     let ts = glfwGetTime()
+    when not defined(release):
+      frameCount += 1
+      if ts - prevTime >= 1.0:
+        echo "FPS: ", frameCount
+        frameCount = 0
+        prevTime = ts
     game.deltaTime = ts - game.totalTime
     game.totalTime = ts
     game.tick()
