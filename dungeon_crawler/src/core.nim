@@ -119,7 +119,7 @@ func calcDistance(x1: float, y1: float, x2: float, y2: float): float =
   abs(math.sqrt(math.pow(x1 - x2, 2) + math.pow(y1 - y2, 2)))
 
 var (session, rules) =
-  initSessionWithRules(Fact):
+  initSessionWithRules(Fact, autoFire = false):
     # getters
     rule getWindow(Fact):
       what:
