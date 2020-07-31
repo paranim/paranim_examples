@@ -64,8 +64,8 @@ proc addVoxelEntities(meshes: seq[mesh_builder.Mesh]) =
       voxelEntities.add(compile(game, uncompiledEntity))
     mesh_builder.free_mesh(mesh.unsafeAddr)
 
-let rules =
-  ruleset:
+var (session, rules) =
+  initSessionWithRules(Fact):
     # getters
     rule getWindow(Fact):
       what:
@@ -116,11 +116,6 @@ let rules =
           newY = if abs(yDiff) < minDiff: ty else: y + (yDiff * dt * speed)
         session.insert(Global, CameraX, newX)
         session.insert(Global, CameraY, newY)
-
-var session = initSession(Fact)
-
-for r in rules.fields:
-  session.add(r)
 
 proc onKeyPress*(key: int) =
   var (keys) = session.query(rules.getKeys)

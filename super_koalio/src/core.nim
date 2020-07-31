@@ -81,8 +81,8 @@ proc hitTile(x: int, y: int) =
   # remove the tile from hit detection
   wallLayer[x][y] = -1
 
-let rules =
-  ruleset:
+var (session, rules) =
+  initSessionWithRules(Fact):
     # getters
     rule getWindow(Fact):
       what:
@@ -223,11 +223,6 @@ let rules =
             session.insert(Player, CanJump, true)
           elif yChange < 0:
             hitTile(vertTile.x, vertTile.y)
-
-var session = initSession(Fact)
-
-for r in rules.fields:
-  session.add(r)
 
 proc onKeyPress*(key: int) =
   var (keys) = session.query(rules.getKeys)
