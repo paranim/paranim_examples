@@ -8,7 +8,11 @@ srcDir        = "src"
 bin           = @["voxel_explorer"]
 
 task dev, "Run dev version":
-  exec "nimble run voxel_explorer"
+  let ret = gorgeEx "nimble -d:paravim run voxel_explorer"
+  if ret.exitCode != 0:
+    # in case the error was caused by paravim,
+    # try re-running with it disabled
+    exec "nimble run voxel_explorer"
 
 # Dependencies
 

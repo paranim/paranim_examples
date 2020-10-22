@@ -8,7 +8,11 @@ srcDir        = "src"
 bin           = @["super_koalio"]
 
 task dev, "Run dev version":
-  exec "nimble run super_koalio"
+  let ret = gorgeEx "nimble -d:paravim run super_koalio"
+  if ret.exitCode != 0:
+    # in case the error was caused by paravim,
+    # try re-running with it disabled
+    exec "nimble run super_koalio"
 
 # Dependencies
 
