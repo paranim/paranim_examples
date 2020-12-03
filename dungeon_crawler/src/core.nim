@@ -160,24 +160,24 @@ var (session, rules) =
         (Player, YVelocity, yv, then = false)
         (Player, MaxVelocity, maxVelocity)
       then:
-        xv =
+        var xvNew =
           if keys.contains(int(GLFWKey.Left)):
             -1 * maxVelocity
           elif keys.contains(int(GLFWKey.Right)):
             maxVelocity
           else:
             xv
-        yv =
+        var yvNew =
           if keys.contains(int(GLFWKey.Up)):
             -1 * maxVelocity
           elif keys.contains(int(GLFWKey.Down)):
             maxVelocity
           else:
             yv
-        let xChange = xv * dt
-        let yChange = yv * dt
-        session.insert(Player, XVelocity, decelerate(xv))
-        session.insert(Player, YVelocity, decelerate(yv))
+        let xChange = xvNew * dt
+        let yChange = yvNew * dt
+        session.insert(Player, XVelocity, decelerate(xvNew))
+        session.insert(Player, YVelocity, decelerate(yvNew))
         session.insert(Player, XChange, xChange)
         session.insert(Player, YChange, yChange)
         session.insert(Player, X, x + xChange)
@@ -196,32 +196,33 @@ var (session, rules) =
         id != Player.ord
       then:
         let distance = calcDistance(x, y, px, py)
+        var xvNew, yvNew: float
         if distance > minAggroDistance and distance < maxAggroDistance:
-          xv =
+          xvNew =
             if px < x:
               -1 * maxVelocity
             else:
               maxVelocity
-          yv =
+          yvNew =
             if py < y:
               -1 * maxVelocity
             else:
               maxVelocity
         else:
-          xv =
+          xvNew =
             if xv == 0:
               float(rand(2) - 1) * maxVelocity
             else:
               xv
-          yv =
+          yvNew =
             if yv == 0:
               float(rand(2) - 1) * maxVelocity
             else:
               yv
-        let xChange = xv * dt
-        let yChange = yv * dt
-        session.insert(id, XVelocity, decelerate(xv))
-        session.insert(id, YVelocity, decelerate(yv))
+        let xChange = xvNew * dt
+        let yChange = yvNew * dt
+        session.insert(id, XVelocity, decelerate(xvNew))
+        session.insert(id, YVelocity, decelerate(yvNew))
         session.insert(id, XChange, xChange)
         session.insert(id, YChange, yChange)
         session.insert(id, X, x + xChange)
