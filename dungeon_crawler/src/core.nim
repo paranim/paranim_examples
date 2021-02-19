@@ -68,12 +68,14 @@ const
   damping = 0.5
   maxPlayerVelocity = 4f
   animationSecs = 0.2
+  minAggroDistance = 0.5
+  maxAggroDistance = 2.0
+
+let # for some reason this can't be const or it breaks emscripten
   velocities = {(-1, 0): West, (-1, -1): NorthWest,
                 (0, -1): North, (1, -1): NorthEast,
                 (1, 0): East, (1, 1): SouthEast,
                 (0, 1): South, (-1, 1): SouthWest}.toTable
-  minAggroDistance = 0.5
-  maxAggroDistance = 2.0
 
 var
   # the full tiled map

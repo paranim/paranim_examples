@@ -50,6 +50,30 @@ proc scrollCallback(window: GLFWWindow, xoffset: float64, yoffset: float64) {.cd
     if not focusOnGame:
       paravim.scrollCallback(window, xoffset, yoffset)
 
+when defined(emscripten):
+  proc emscripten_set_main_loop(f: proc() {.cdecl.}, a: cint, b: bool) {.importc.}
+
+var
+  game: Game
+  window: GLFWWindow
+
+proc mainLoop() {.cdecl.} =
+  let ts = glfwGetTime()
+  game.deltaTime = ts - game.totalTime
+  game.totalTime = ts
+  when defined(emscripten):
+    try:
+      game.tick()
+    except Exception as ex:
+      echo ex.msg
+  else:
+    game.tick()
+  when defined(paravim):
+    if not focusOnGame:
+      discard paravim.tick(game)
+  window.swapBuffers()
+  glfwPollEvents()
+
 when isMainModule:
   doAssert glfwInit()
 
@@ -59,49 +83,36 @@ when isMainModule:
   glfwWindowHint(GLFWOpenglProfile, GLFW_OPENGL_CORE_PROFILE)
   glfwWindowHint(GLFWResizable, GLFW_TRUE)
 
-  let w: GLFWWindow = glfwCreateWindow(1024, 768, "Dungeon Crawler")
-  if w == nil:
+  window = glfwCreateWindow(1024, 768, "Dungeon Crawler")
+  if window == nil:
     quit(-1)
 
-  w.makeContextCurrent()
+  window.makeContextCurrent()
   glfwSwapInterval(1)
 
-  discard w.setKeyCallback(keyCallback)
-  discard w.setCharCallback(charCallback)
-  discard w.setMouseButtonCallback(mouseButtonCallback)
-  discard w.setCursorPosCallback(cursorPosCallback)
-  discard w.setFramebufferSizeCallback(frameSizeCallback)
-  discard w.setScrollCallback(scrollCallback)
+  discard window.setKeyCallback(keyCallback)
+  discard window.setCharCallback(charCallback)
+  discard window.setMouseButtonCallback(mouseButtonCallback)
+  discard window.setCursorPosCallback(cursorPosCallback)
+  discard window.setFramebufferSizeCallback(frameSizeCallback)
+  discard window.setScrollCallback(scrollCallback)
 
   var width, height: int32
-  w.getFramebufferSize(width.addr, height.addr)
-  w.frameSizeCallback(width, height)
+  window.getFramebufferSize(width.addr, height.addr)
+  window.frameSizeCallback(width, height)
 
-  var game = Game()
+  game = Game()
   when defined(paravim):
-    paravim.init(game, w)
+    paravim.init(game, window)
   game.init()
 
   game.totalTime = glfwGetTime()
 
-  var prevTime = glfwGetTime()
-  var frameCount = 0
+  when defined(emscripten):
+    emscripten_set_main_loop(mainLoop, 0, true)
+  else:
+    while not window.windowShouldClose:
+      mainLoop()
 
-  while not w.windowShouldClose:
-    let ts = glfwGetTime()
-    frameCount += 1
-    if ts - prevTime >= 1.0:
-      echo "FPS: ", frameCount
-      frameCount = 0
-      prevTime = ts
-    game.deltaTime = ts - game.totalTime
-    game.totalTime = ts
-    game.tick()
-    when defined(paravim):
-      if not focusOnGame:
-        discard paravim.tick(game)
-    w.swapBuffers()
-    glfwPollEvents()
-
-  w.destroyWindow()
+  window.destroyWindow()
   glfwTerminate()

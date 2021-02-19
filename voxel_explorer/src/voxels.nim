@@ -4,6 +4,7 @@ import glm
 import stb_voxel_render
 from algorithm import nil
 from mesh_builder import nil
+import re
 
 type
   VoxelEntityUniforms = tuple[
@@ -52,6 +53,9 @@ proc setMesh*[T](entity: var T, mesh: mesh_builder.Mesh) =
 proc initVoxelEntity*(faceUnit: GLint, voxelUnit: GLint): UncompiledVoxelEntity =
   result.vertexSource = $ getVertexShader()
   result.fragmentSource = $ getFragmentShader()
+  when defined(emscripten):
+    result.vertexSource = result.vertexSource.replace(re"#version.*", "#version 300 es\n")
+    result.fragmentSource = result.fragmentSource.replace(re"#version.*", "#version 300 es\n")
   # attr_vertex
   result.attributes.attr_vertex = Attribute[GLuint](disable: true, size: 1, iter: 1)
   new(result.attributes.attr_vertex.data)

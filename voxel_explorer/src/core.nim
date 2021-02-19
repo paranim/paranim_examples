@@ -199,12 +199,12 @@ proc tick*(game: Game) =
   glClear(GLbitfield(bitor(GL_COLOR_BUFFER_BIT.ord, GL_DEPTH_BUFFER_BIT.ord)))
 
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-  glColor3f(1, 1, 1)
+  #glColor3f(1, 1, 1)
   glFrontFace(GL_CW)
   glEnable(GL_TEXTURE_2D)
   glDisable(GL_BLEND)
   glEnable(GL_ALPHA_TEST)
-  glAlphaFunc(GL_GREATER, 0.5)
+  #glAlphaFunc(GL_GREATER, 0.5)
 
   glViewport(0, 0, int32(windowWidth), int32(windowHeight))
 
