@@ -105,7 +105,6 @@ when isMainModule:
   window.getFramebufferSize(width.addr, height.addr)
   window.frameSizeCallback(width, height)
 
-  game = Game()
   when defined(paravim):
     paravim.init(game, window)
   game.init()
