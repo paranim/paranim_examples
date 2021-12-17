@@ -12,9 +12,7 @@ import paranim/math as pmath
 from rooms import nil
 import random
 
-# this breaks emscripten for some reason
-when not defined(emscripten):
-  randomize()
+randomize()
 
 type
   Game* = object of RootGame
