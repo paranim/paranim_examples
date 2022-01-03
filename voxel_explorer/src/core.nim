@@ -64,8 +64,8 @@ proc addVoxelEntities(meshes: seq[mesh_builder.Mesh]) =
       voxelEntities.add(compile(game, uncompiledEntity))
     mesh_builder.free_mesh(mesh.unsafeAddr)
 
-var (session, rules) =
-  initSessionWithRules(Fact):
+let (initSession, rules) =
+  defineSessionWithRules(Fact, FactMatch, autoFire = false):
     # getters
     rule getWindow(Fact):
       what:
@@ -117,15 +117,21 @@ var (session, rules) =
         session.insert(Global, CameraX, newX)
         session.insert(Global, CameraY, newY)
 
+var session: Session[Fact, FactMatch] = initSession()
+for r in rules.fields:
+  session.add(r)
+
 proc onKeyPress*(key: int) =
   var (keys) = session.query(rules.getKeys)
   keys.incl(key)
   session.insert(Global, PressedKeys, keys)
+  session.fireRules
 
 proc onKeyRelease*(key: int) =
   var (keys) = session.query(rules.getKeys)
   keys.excl(key)
   session.insert(Global, PressedKeys, keys)
+  session.fireRules
 
 proc onMouseClick*(button: int) =
   session.insert(Global, MouseClick, button)
@@ -183,6 +189,7 @@ func degToRad(angle: float): float =
 proc tick*(game: Game) =
   session.insert(Global, DeltaTime, game.deltaTime)
   session.insert(Global, TotalTime, game.totalTime)
+  session.fireRules
 
   let (windowWidth, windowHeight) = session.query(rules.getWindow)
   let (cameraX, cameraY) = session.query(rules.getCamera)

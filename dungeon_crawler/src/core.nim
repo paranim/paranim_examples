@@ -120,8 +120,8 @@ func screenToIsometric(x: float, y: float): tuple[x: float, y: float] =
 func calcDistance(x1: float, y1: float, x2: float, y2: float): float =
   abs(math.sqrt(math.pow(x1 - x2, 2) + math.pow(y1 - y2, 2)))
 
-var (session, rules) =
-  initSessionWithRules(Fact, autoFire = false):
+let (initSession, rules) =
+  defineSessionWithRules(Fact, FactMatch, autoFire = false):
     # getters
     rule getWindow(Fact):
       what:
@@ -291,6 +291,10 @@ var (session, rules) =
           session.insert(id, Y, oldY)
           session.insert(id, YChange, 0f)
           session.insert(id, YVelocity, 0f)
+
+var session: Session[Fact, FactMatch] = initSession()
+for r in rules.fields:
+  session.add(r)
 
 proc onKeyPress*(key: int) =
   var (keys) = session.query(rules.getKeys)
