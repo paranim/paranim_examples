@@ -121,7 +121,7 @@ func calcDistance(x1: float, y1: float, x2: float, y2: float): float =
   abs(math.sqrt(math.pow(x1 - x2, 2) + math.pow(y1 - y2, 2)))
 
 let (initSession, rules) =
-  defineSessionWithRules(Fact, FactMatch, autoFire = false):
+  staticRuleset(Fact, FactMatch):
     # getters
     rule getWindow(Fact):
       what:
@@ -292,7 +292,7 @@ let (initSession, rules) =
           session.insert(id, YChange, 0f)
           session.insert(id, YVelocity, 0f)
 
-var session: Session[Fact, FactMatch] = initSession()
+var session: Session[Fact, FactMatch] = initSession(autoFire = false)
 for r in rules.fields:
   session.add(r)
 

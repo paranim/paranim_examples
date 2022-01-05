@@ -65,7 +65,7 @@ proc addVoxelEntities(meshes: seq[mesh_builder.Mesh]) =
     mesh_builder.free_mesh(mesh.unsafeAddr)
 
 let (initSession, rules) =
-  defineSessionWithRules(Fact, FactMatch, autoFire = false):
+  staticRuleset(Fact, FactMatch):
     # getters
     rule getWindow(Fact):
       what:
@@ -117,7 +117,7 @@ let (initSession, rules) =
         session.insert(Global, CameraX, newX)
         session.insert(Global, CameraY, newY)
 
-var session: Session[Fact, FactMatch] = initSession()
+var session: Session[Fact, FactMatch] = initSession(autoFire = false)
 for r in rules.fields:
   session.add(r)
 

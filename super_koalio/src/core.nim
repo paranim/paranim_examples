@@ -82,7 +82,7 @@ proc hitTile(x: int, y: int) =
   wallLayer[x][y] = -1
 
 let (initSession, rules) =
-  defineSessionWithRules(Fact, FactMatch, autoFire = false):
+  staticRuleset(Fact, FactMatch):
     # getters
     rule getWindow(Fact):
       what:
@@ -224,7 +224,7 @@ let (initSession, rules) =
           elif yChange < 0:
             hitTile(vertTile.x, vertTile.y)
 
-var session: Session[Fact, FactMatch] = initSession()
+var session: Session[Fact, FactMatch] = initSession(autoFire = false)
 for r in rules.fields:
   session.add(r)
 
