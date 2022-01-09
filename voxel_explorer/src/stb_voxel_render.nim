@@ -5,15 +5,15 @@ const
   STBVOX_MAX_MESH_SLOTS = 3
 
 type
-  stbvox_block_type* = cuchar
+  stbvox_block_type* = uint8
 
 type
   stbvox_rgb* {.bycopy.} = object
-    r*: cuchar
-    g*: cuchar
-    b*: cuchar
+    r*: uint8
+    g*: uint8
+    b*: uint8
   stbvox_input_description* {.bycopy.} = object
-    lighting_at_vertices*: cuchar ##  The default is lighting values (i.e. ambient occlusion) are at block
+    lighting_at_vertices*: uint8 ##  The default is lighting values (i.e. ambient occlusion) are at block
                                 ##  center, and the vertex light is gathered from those adjacent block
                                 ##  centers that the vertex is facing. This makes smooth lighting
                                 ##  consistent across adjacent faces with the same orientation.
@@ -26,7 +26,7 @@ type
                                 ##  note that for cache efficiency, you want to use the block_foo palettes as much as possible instead
     rgb*: ptr stbvox_rgb        ##  Indexed by 3D coordinate.
                       ##  24-bit voxel color for STBVOX_CONFIG_MODE = 20 or 21 only
-    lighting*: ptr cuchar ##  Indexed by 3D coordinate. The lighting value / ambient occlusion
+    lighting*: ptr uint8 ##  Indexed by 3D coordinate. The lighting value / ambient occlusion
                        ##  value that is used to define the vertex lighting values.
                        ##  The raw lighting values are defined at the center of blocks
                        ##  (or at vertex if 'lighting_at_vertices' is true).
@@ -56,112 +56,112 @@ type
                                    ##
                                    ##  Normally it is an unsigned byte, but you can override it to be
                                    ##  a short if you have too many blocktypes.
-    geometry*: ptr cuchar ##  Indexed by 3D coordinate. Contains the geometry type for the block.
+    geometry*: ptr uint8 ##  Indexed by 3D coordinate. Contains the geometry type for the block.
                        ##  Also contains a 2-bit rotation for how the whole block is rotated.
                        ##  Also includes a 2-bit vheight value when using shared vheight values.
                        ##  See the separate vheight documentation.
                        ##  Encode with STBVOX_MAKE_GEOMETRY(geom, rot, vheight)
-    block_geometry*: ptr cuchar ##  Array indexed by blocktype containing the geometry for this block, plus
+    block_geometry*: ptr uint8 ##  Array indexed by blocktype containing the geometry for this block, plus
                              ##  a 2-bit "simple rotation". Note rotation has limited use since it's not
                              ##  independent of blocktype.
                              ##
                              ##  Encode with STBVOX_MAKE_GEOMETRY(geom,simple_rot,0)
-    block_tex1*: ptr cuchar     ##  Array indexed by blocktype containing the texture id for texture #1.
-    block_tex1_face*: array[6, cuchar] ##  Array indexed by blocktype and face containing the texture id for texture #1.
+    block_tex1*: ptr uint8     ##  Array indexed by blocktype containing the texture id for texture #1.
+    block_tex1_face*: array[6, uint8] ##  Array indexed by blocktype and face containing the texture id for texture #1.
                                     ##  The N/E/S/W face choices can be rotated by one of the rotation selectors;
                                     ##  The top & bottom face textures will rotate to match.
                                     ##  Note that it only makes sense to use one of block_tex1 or block_tex1_face;
                                     ##  this pattern repeats throughout and this notice is not repeated.
-    tex2*: ptr cuchar ##  Indexed by 3D coordinate. Contains the texture id for texture #2
+    tex2*: ptr uint8 ##  Indexed by 3D coordinate. Contains the texture id for texture #2
                    ##  to use on all faces of the block.
-    block_tex2*: ptr cuchar     ##  Array indexed by blocktype containing the texture id for texture #2.
-    block_tex2_face*: array[6, cuchar] ##  Array indexed by blocktype and face containing the texture id for texture #2.
+    block_tex2*: ptr uint8     ##  Array indexed by blocktype containing the texture id for texture #2.
+    block_tex2_face*: array[6, uint8] ##  Array indexed by blocktype and face containing the texture id for texture #2.
                                     ##  The N/E/S/W face choices can be rotated by one of the rotation selectors;
                                     ##  The top & bottom face textures will rotate to match.
-    color*: ptr cuchar ##  Indexed by 3D coordinate. Contains the color for all faces of the block.
+    color*: ptr uint8 ##  Indexed by 3D coordinate. Contains the color for all faces of the block.
                     ##  The core color value is 0..63.
                     ##  Encode with STBVOX_MAKE_COLOR(color_number, tex1_enable, tex2_enable)
-    block_color*: ptr cuchar ##  Array indexed by blocktype containing the color value to apply to the faces.
+    block_color*: ptr uint8 ##  Array indexed by blocktype containing the color value to apply to the faces.
                           ##  The core color value is 0..63.
                           ##  Encode with STBVOX_MAKE_COLOR(color_number, tex1_enable, tex2_enable)
-    block_color_face*: array[6, cuchar] ##  Array indexed by blocktype and face containing the color value to apply to that face.
+    block_color_face*: array[6, uint8] ##  Array indexed by blocktype and face containing the color value to apply to that face.
                                      ##  The core color value is 0..63.
                                      ##  Encode with STBVOX_MAKE_COLOR(color_number, tex1_enable, tex2_enable)
-    block_texlerp*: ptr cuchar ##  Array indexed by blocktype containing 3-bit scalar for texture #2 alpha
+    block_texlerp*: ptr uint8 ##  Array indexed by blocktype containing 3-bit scalar for texture #2 alpha
                             ##  (known throughout as 'texlerp'). This is constant over every face even
                             ##  though the property is potentially per-vertex.
-    block_texlerp_face*: array[6, cuchar] ##  Array indexed by blocktype and face containing 3-bit scalar for texture #2 alpha.
+    block_texlerp_face*: array[6, uint8] ##  Array indexed by blocktype and face containing 3-bit scalar for texture #2 alpha.
                                        ##  This is constant over the face even though the property is potentially per-vertex.
-    block_vheight*: ptr cuchar ##  Array indexed by blocktype containing the vheight values for the
+    block_vheight*: ptr uint8 ##  Array indexed by blocktype containing the vheight values for the
                             ##  top or bottom face of this block. These will rotate properly if the
                             ##  block is rotated. See discussion of vheight.
                             ##  Encode with STBVOX_MAKE_VHEIGHT(sw_height, se_height, nw_height, ne_height)
-    selector*: ptr cuchar       ##  Array indexed by 3D coordinates indicating which output mesh to select.
-    block_selector*: ptr cuchar ##  Array indexed by blocktype indicating which output mesh to select.
-    side_texrot*: ptr cuchar ##  Array indexed by 3D coordinates encoding 2-bit texture rotations for the
+    selector*: ptr uint8       ##  Array indexed by 3D coordinates indicating which output mesh to select.
+    block_selector*: ptr uint8 ##  Array indexed by blocktype indicating which output mesh to select.
+    side_texrot*: ptr uint8 ##  Array indexed by 3D coordinates encoding 2-bit texture rotations for the
                           ##  faces on the E/N/W/S sides of the block.
                           ##  Encode with STBVOX_MAKE_SIDE_TEXROT(rot_e, rot_n, rot_w, rot_s)
-    block_side_texrot*: ptr cuchar ##  Array indexed by blocktype encoding 2-bit texture rotations for the faces
+    block_side_texrot*: ptr uint8 ##  Array indexed by blocktype encoding 2-bit texture rotations for the faces
                                 ##  on the E/N/W/S sides of the block.
                                 ##  Encode with STBVOX_MAKE_SIDE_TEXROT(rot_e, rot_n, rot_w, rot_s)
-    overlay*: ptr cuchar ##  index into palettes listed below
+    overlay*: ptr uint8 ##  index into palettes listed below
                       ##  Indexed by 3D coordinate. If 0, there is no overlay. If non-zero,
                       ##  it indexes into to the below arrays and overrides the values
                       ##  defined by the blocktype.
-    overlay_tex1*: array[6, cuchar] ##  Array indexed by overlay value and face, containing an override value
+    overlay_tex1*: array[6, uint8] ##  Array indexed by overlay value and face, containing an override value
                                  ##  for the texture id for texture #1. If 0, the value defined by blocktype
                                  ##  is used.
-    overlay_tex2*: array[6, cuchar] ##  Array indexed by overlay value and face, containing an override value
+    overlay_tex2*: array[6, uint8] ##  Array indexed by overlay value and face, containing an override value
                                  ##  for the texture id for texture #2. If 0, the value defined by blocktype
                                  ##  is used.
-    overlay_color*: array[6, cuchar] ##  Array indexed by overlay value and face, containing an override value
+    overlay_color*: array[6, uint8] ##  Array indexed by overlay value and face, containing an override value
                                   ##  for the face color. If 0, the value defined by blocktype is used.
-    overlay_side_texrot*: ptr cuchar ##  Array indexed by overlay value, encoding 2-bit texture rotations for the faces
+    overlay_side_texrot*: ptr uint8 ##  Array indexed by overlay value, encoding 2-bit texture rotations for the faces
                                   ##  on the E/N/W/S sides of the block.
                                   ##  Encode with STBVOX_MAKE_SIDE_TEXROT(rot_e, rot_n, rot_w, rot_s)
-    rotate*: ptr cuchar ##  Indexed by 3D coordinate. Allows independent rotation of several
+    rotate*: ptr uint8 ##  Indexed by 3D coordinate. Allows independent rotation of several
                      ##  parts of the voxel, where by rotation I mean swapping textures
                      ##  and colors between E/N/S/W faces.
                      ##     Block: rotates anything indexed by blocktype
                      ##     Overlay: rotates anything indexed by overlay
                      ##     EColor: rotates faces defined in ecolor_facemask
                      ##  Encode with STBVOX_MAKE_MATROT(block,overlay,ecolor)
-    tex2_for_tex1*: ptr cuchar ##  Array indexed by tex1 containing the texture id for texture #2.
+    tex2_for_tex1*: ptr uint8 ##  Array indexed by tex1 containing the texture id for texture #2.
                             ##  You can use this if the two are always/almost-always strictly
                             ##  correlated (e.g. if tex2 is a detail texture for tex1), as it
                             ##  will be more efficient (touching fewer cache lines) than using
                             ##  e.g. block_tex2_face.
-    tex2_replace*: ptr cuchar ##  Indexed by 3D coordinate. Specifies the texture id for texture #2
+    tex2_replace*: ptr uint8 ##  Indexed by 3D coordinate. Specifies the texture id for texture #2
                            ##  to use on a single face of the voxel, which must be E/N/W/S (not U/D).
                            ##  The texture id is limited to 6 bits unless tex2_facemask is also
                            ##  defined (see below).
                            ##  Encode with STBVOX_MAKE_TEX2_REPLACE(tex2, face)
-    tex2_facemask*: ptr cuchar ##  Indexed by 3D coordinate. Specifies which of the six faces should
+    tex2_facemask*: ptr uint8 ##  Indexed by 3D coordinate. Specifies which of the six faces should
                             ##  have their tex2 replaced by the value of tex2_replace. In this
                             ##  case, all 8 bits of tex2_replace are used as the texture id.
                             ##  Encode with STBVOX_MAKE_FACE_MASK(east,north,west,south,up,down)
-    extended_color*: ptr cuchar ##  Indexed by 3D coordinate. Specifies a value that indexes into
+    extended_color*: ptr uint8 ##  Indexed by 3D coordinate. Specifies a value that indexes into
                              ##  the ecolor arrays below (both of which must be defined).
-    ecolor_color*: ptr cuchar ##  Indexed by extended_color value, specifies an optional override
+    ecolor_color*: ptr uint8 ##  Indexed by extended_color value, specifies an optional override
                            ##  for the color value on some faces.
                            ##  Encode with STBVOX_MAKE_COLOR(color_number, tex1_enable, tex2_enable)
-    ecolor_facemask*: ptr cuchar ##  Indexed by extended_color value, this specifies which faces the
+    ecolor_facemask*: ptr uint8 ##  Indexed by extended_color value, this specifies which faces the
                               ##  color in ecolor_color should be applied to. The faces can be
                               ##  independently rotated by the ecolor value of 'rotate', if it exists.
                               ##  Encode with STBVOX_MAKE_FACE_MASK(e,n,w,s,u,d)
-    color2*: ptr cuchar ##  Indexed by 3D coordinates, specifies an alternative color to apply
+    color2*: ptr uint8 ##  Indexed by 3D coordinates, specifies an alternative color to apply
                      ##  to some of the faces of the block.
                      ##  Encode with STBVOX_MAKE_COLOR(color_number, tex1_enable, tex2_enable)
-    color2_facemask*: ptr cuchar ##  Indexed by 3D coordinates, specifies which faces should use the
+    color2_facemask*: ptr uint8 ##  Indexed by 3D coordinates, specifies which faces should use the
                               ##  color defined in color2. No rotation value is applied.
                               ##  Encode with STBVOX_MAKE_FACE_MASK(e,n,w,s,u,d)
-    color3*: ptr cuchar ##  Indexed by 3D coordinates, specifies an alternative color to apply
+    color3*: ptr uint8 ##  Indexed by 3D coordinates, specifies an alternative color to apply
                      ##  to some of the faces of the block.
                      ##  Encode with STBVOX_MAKE_COLOR(color_number, tex1_enable, tex2_enable)
-    color3_facemask*: ptr cuchar ##  Indexed by 3D coordinates, specifies which faces should use the
+    color3_facemask*: ptr uint8 ##  Indexed by 3D coordinates, specifies which faces should use the
                               ##  color defined in color3. No rotation value is applied.
                               ##  Encode with STBVOX_MAKE_FACE_MASK(e,n,w,s,u,d)
-    texlerp_simple*: ptr cuchar ##  Indexed by 3D coordinates, this is the smallest texlerp encoding
+    texlerp_simple*: ptr uint8 ##  Indexed by 3D coordinates, this is the smallest texlerp encoding
                              ##  that can do useful work. It consits of three values: baselerp,
                              ##  vertlerp, and face_vertlerp. Baselerp defines the value
                              ##  to use on all of the faces but one, from the STBVOX_TEXLERP_BASE
@@ -175,7 +175,7 @@ type
                              ##  Encode with STBVOX_MAKE_TEXLERP_SIMPLE(baselerp, vertlerp, face_vertlerp)
                              ##  The following texlerp encodings are experimental and maybe not
                              ##  that useful.
-    texlerp*: ptr cuchar ##  Indexed by 3D coordinates, this defines four values:
+    texlerp*: ptr uint8 ##  Indexed by 3D coordinates, this defines four values:
                       ##    vertlerp is a lerp value at every vertex of the mesh (using STBVOX_TEXLERP_BASE values).
                       ##    ud is the value to use on up and down faces, from STBVOX_TEXLERP_FACE values
                       ##    ew is the value to use on east and west faces, from STBVOX_TEXLERP_FACE values
@@ -199,11 +199,11 @@ type
                              ##  encoded using STBVOX_TEXLERP3 values, whereas up and down
                              ##  use STBVOX_TEXLERP_SIMPLE values.
                              ##  Encode with STBVOX_MAKE_FACE3(face_e,face_n,face_w,face_s,face_u,face_d)
-    vheight*: ptr cuchar ##  STBVOX_MAKE_VHEIGHT   -- sw:2, se:2, nw:2, ne:2, doesn't rotate
+    vheight*: ptr uint8 ##  STBVOX_MAKE_VHEIGHT   -- sw:2, se:2, nw:2, ne:2, doesn't rotate
                       ##  Indexed by 3D coordinates, this defines the four
                       ##  vheight values to use if the geometry is STBVOX_GEOM_vheight*.
                       ##  See the vheight discussion.
-    packed_compact*: ptr cuchar ##  Stores block rotation, vheight, and texlerp values:
+    packed_compact*: ptr uint8 ##  Stores block rotation, vheight, and texlerp values:
                              ##     block rotation: 2 bits
                              ##     vertex vheight: 2 bits
                              ##     use_texlerp   : 1 bit
@@ -291,7 +291,7 @@ const                         ##   ---------------------------------------------
   STBVOX_UNIFORM_camera_pos* = 8 ##   Y      camera position in global voxel space (for lighting & fog)
   STBVOX_UNIFORM_count* = 9
 
-proc makeGeometry*(geom: cuchar, rotate: cuchar, vheight: cuchar): cuchar {.cdecl, importc: "stbvox_make_geometry".}
+proc makeGeometry*(geom: uint8, rotate: uint8, vheight: uint8): uint8 {.cdecl, importc: "stbvox_make_geometry".}
 proc makeLightingExt*(lighting: uint8, rot: uint8): uint8 {.cdecl, importc: "stbvox_make_lighting_ext".}
 proc setInputStride*(mm: ptr stbvox_mesh_maker, x_stride_in_bytes: cint, y_stride_in_bytes: cint) {.cdecl, importc: "stbvox_set_input_stride".}
 proc setInputRange*(mm: ptr stbvox_mesh_maker, x0: cint, y0: cint, z0: cint, x1: cint, y1: cint, z1: cint) {.cdecl, importc: "stbvox_set_input_range".}

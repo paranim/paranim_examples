@@ -44,22 +44,22 @@ type
 
 var
   builtMeshes: HashSet[tuple[x: int, y: int]]
-  geomForBlocktype: array[256, cuchar]
-  texForBlocktype: array[256, array[6, cuchar]]
+  geomForBlocktype: array[256, uint8]
+  texForBlocktype: array[256, array[6, uint8]]
 
-proc build_mesh(rm: ptr Mesh, geomForBlocktype: array[256, cuchar], texForBlocktype: array[256, array[6, cuchar]]) {.cdecl, importc: "build_mesh".}
+proc build_mesh(rm: ptr Mesh, geomForBlocktype: array[256, uint8], texForBlocktype: array[256, array[6, uint8]]) {.cdecl, importc: "build_mesh".}
 
 proc world_to_chunk(n: cint): cint {.cdecl importc: "world_to_chunk".}
 
 proc free_mesh*(mesh: ptr Mesh) {.cdecl importc: "free_mesh".}
 
-proc setBlocktypeTex(texForBlocktype: var array[256, array[6, cuchar]], bt: BlockType, tex: int) =
+proc setBlocktypeTex(texForBlocktype: var array[256, array[6, uint8]], bt: BlockType, tex: int) =
   for i in 0 ..< 6:
-    texForBlocktype[bt.ord][i] = tex.cuchar
+    texForBlocktype[bt.ord][i] = tex.uint8
 
-proc initMeshBuilding(geomForBlocktype: var array[256, cuchar], texForBlocktype: var array[256, array[6, cuchar]]) =
+proc initMeshBuilding(geomForBlocktype: var array[256, uint8], texForBlocktype: var array[256, array[6, uint8]]) =
   for i in 1 ..< 256:
-    geomForBlocktype[i] = makeGeometry(STBVOX_GEOM_solid.cuchar, 0.cuchar, 0.cuchar)
+    geomForBlocktype[i] = makeGeometry(STBVOX_GEOM_solid.uint8, 0.uint8, 0.uint8)
   setBlocktypeTex(texForBlocktype, Leaves, 0)
   setBlocktypeTex(texForBlocktype, Gravel, 1)
   setBlocktypeTex(texForBlocktype, Grass, 2)
