@@ -27,8 +27,8 @@ type
   MeshChunk {.bycopy.} = object
     chunk_x, chunk_y: cint
     vbuf_size*, fbuf_size*, total_size: csize
-    transform*: array[3, array[3, cfloat]]
-    bounds: array[2, array[3, cfloat]]
+    transform*: array[3, array[3, GLfloat]]
+    bounds: array[2, array[3, GLfloat]]
     vbuf*, fbuf*, fbuf_tex*: cuint
     num_quads*: cint
   Mesh* {.bycopy.} = object

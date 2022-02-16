@@ -45,7 +45,7 @@ proc setMesh*[T](entity: var T, mesh: mesh_builder.Mesh) =
   # set transform uniform
   entity.uniforms.transform.disable = false
   entity.uniforms.transform.data = block:
-    var vecs = newSeq[Vec3[cfloat]]()
+    var vecs = newSeq[Vec3[GLfloat]]()
     for row in mesh.mc.transform:
       vecs.add(vec3(row[0], row[1], row[2]))
     vecs

@@ -1,5 +1,7 @@
 {.compile: "stb_voxel_render.c".}
 
+from nimgl/opengl import GLfloat
+
 const
   STBVOX_MAX_MESHES = 2
   STBVOX_MAX_MESH_SLOTS = 3
@@ -243,13 +245,13 @@ type
     output_size*: array[STBVOX_MAX_MESHES, array[STBVOX_MAX_MESH_SLOTS, cint]] ##  per quad
     output_step*: array[STBVOX_MAX_MESHES, array[STBVOX_MAX_MESH_SLOTS, cint]] ##  per vertex or per face, depending
     num_mesh_slots*: cint
-    default_tex_scale*: array[128, array[2, cfloat]]
+    default_tex_scale*: array[128, array[2, GLfloat]]
   stbvox_uniform_info* {.bycopy.} = object
     `type`*: cint              ##  which type of uniform
     bytes_per_element*: cint   ##  the size of each uniform array element (e.g. vec3 = 12 bytes)
     array_length*: cint        ##  length of the uniform array
     name*: cstring             ##  name in the shader @TODO use numeric binding
-    default_value*: ptr cfloat  ##  if not NULL, you can use this as the uniform pointer
+    default_value*: ptr GLfloat  ##  if not NULL, you can use this as the uniform pointer
     use_tex_buffer*: cint      ##  if true, then the uniform is a sampler but the data can come from default_value
 
 proc initMeshMaker*(meshMaker: ptr stbvox_mesh_maker) {.cdecl, importc: "stbvox_init_mesh_maker".}
@@ -298,7 +300,7 @@ proc setInputRange*(mm: ptr stbvox_mesh_maker, x0: cint, y0: cint, z0: cint, x1:
 proc setDefaultMesh*(mm: ptr stbvox_mesh_maker, mesh: cint) {.cdecl, importc: "stbvox_set_default_mesh".}
 proc makeMesh*(mm: ptr stbvox_mesh_maker): cint {.cdecl, importc: "stbvox_make_mesh".}
 proc setMeshCoordinates*(mm: ptr stbvox_mesh_maker; x: cint; y: cint; z: cint) {.cdecl, importc: "stbvox_set_mesh_coordinates".}
-proc getTransform*(mm: ptr stbvox_mesh_maker; transform: array[3, array[3, cfloat]]) {.cdecl, importc: "stbvox_get_transform".}
-proc getBounds*(mm: ptr stbvox_mesh_maker; bounds: array[2, array[3, cfloat]]) {.cdecl, importc: "stbvox_get_bounds".}
+proc getTransform*(mm: ptr stbvox_mesh_maker; transform: array[3, array[3, GLfloat]]) {.cdecl, importc: "stbvox_get_transform".}
+proc getBounds*(mm: ptr stbvox_mesh_maker; bounds: array[2, array[3, GLfloat]]) {.cdecl, importc: "stbvox_get_bounds".}
 proc getQuadCount*(mm: ptr stbvox_mesh_maker, mesh: cint): cint {.cdecl, importc: "stbvox_get_quad_count".}
 proc getUniformInfo*(info: ptr stbvox_uniform_info; uniform: cint): cint {.cdecl, importc: "stbvox_get_uniform_info".}
