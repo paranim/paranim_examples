@@ -1,5 +1,5 @@
-import nimgl/opengl
-from nimgl/glfw import GLFWKey
+import paranim/opengl
+from paranim/glfw import GLFWKey
 import paranim/gl, paranim/gl/entities
 import pararules
 import sets, tables
@@ -8,7 +8,7 @@ from voxels import VoxelEntity
 from mesh_builder import nil
 import texture_loader
 import stb_image/read as stbi
-import glm
+import paranim/glm
 import paranim/math as pmath
 from math import nil
 

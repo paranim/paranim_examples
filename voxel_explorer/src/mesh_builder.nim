@@ -1,4 +1,4 @@
-import nimgl/opengl
+import paranim/opengl
 import stb_voxel_render, u_noise
 import sets
 

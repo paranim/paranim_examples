@@ -1,6 +1,6 @@
 {.compile: "stb_voxel_render.c".}
 
-from nimgl/opengl import GLfloat
+from paranim/opengl import GLfloat
 
 const
   STBVOX_MAX_MESHES = 2

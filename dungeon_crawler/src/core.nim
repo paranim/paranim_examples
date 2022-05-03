@@ -1,5 +1,5 @@
-import nimgl/opengl
-from nimgl/glfw import GLFWKey
+import paranim/opengl
+from paranim/glfw import GLFWKey
 import stb_image/read as stbi
 import paranim/gl, paranim/gl/entities
 import pararules
@@ -7,7 +7,7 @@ from tiles import nil
 import sets, tables
 from algorithm import sort
 from math import `mod`
-from glm import nil
+from paranim/glm import nil
 import paranim/math as pmath
 from rooms import nil
 import random

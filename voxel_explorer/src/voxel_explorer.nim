@@ -1,4 +1,4 @@
-import nimgl/glfw
+import paranim/glfw
 import core
 from mesh_builder import nil
 

@@ -1,6 +1,6 @@
-import nimgl/opengl
+import paranim/opengl
 import paranim/gl, paranim/gl/[uniforms, attributes]
-import glm
+import paranim/glm
 import stb_voxel_render
 from algorithm import nil
 from mesh_builder import nil

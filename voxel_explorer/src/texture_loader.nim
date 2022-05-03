@@ -1,6 +1,6 @@
 {.compile: "stb_image_resize.c".}
 
-import nimgl/opengl
+import paranim/opengl
 
 const
   STBIR_FLAG_ALPHA_PREMULTIPLIED = 1
