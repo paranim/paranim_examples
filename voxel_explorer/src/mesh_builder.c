@@ -6,6 +6,7 @@
 
 #include <math.h>
 #include <assert.h>
+#include <string.h>
 
 #include "u_noise.h"
 
@@ -367,7 +368,7 @@ void generate_mesh_for_chunk_set(stbvox_mesh_maker *mm, mesh_chunk *mc, vec3i wo
 
    map = stbvox_get_input_description(mm);
    map->block_tex1_face = tex1_for_blocktype[0];
-   map->block_geometry = geom_for_blocktype[0];
+   map->block_geometry = geom_for_blocktype;
    map->block_vheight = 0;
 
    //stbvox_reset_buffers(mm);
